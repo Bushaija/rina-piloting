@@ -159,21 +159,18 @@ export function transformStatementLine(line: StatementLine): TransformedRow {
   let currentValue = line.currentPeriodValue ?? null;
   let previousValue = line.previousPeriodValue ?? null;
 
-  // For working capital lines, use the pre-calculated change values if available
+  // For working capital lines, the API now sends the correct cash flow adjustments
+  // for both current and previous periods. We just need to use them directly.
+  // The changeInCurrentPeriodValue and changeInPreviousPeriodValue fields are legacy
+  // and may still be used if the API sends them.
   if (isWorkingCapitalLine) {
     if (line.changeInCurrentPeriodValue !== undefined && line.changeInCurrentPeriodValue !== null) {
-      // Use the pre-calculated change from the API
+      // Use the pre-calculated change from the API (legacy format)
       currentValue = line.changeInCurrentPeriodValue;
-      previousValue = line.changeInPreviousPeriodValue ?? 0;
-    } else if (currentValue !== null && previousValue !== null) {
-      // Fallback: Calculate the change if not provided by API
-      const change = currentValue - previousValue;
-      currentValue = change;
-      previousValue = 0;
-    } else if (currentValue !== null && previousValue === null) {
-      // If there's no previous period data at all, treat it as change from 0
-      previousValue = 0;
+      previousValue = line.changeInPreviousPeriodValue ?? previousValue ?? 0;
     }
+    // Otherwise, use currentPeriodValue and previousPeriodValue directly
+    // The API now calculates the proper cash flow adjustments for both periods
   }
 
   return {

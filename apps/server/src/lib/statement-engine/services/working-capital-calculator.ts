@@ -31,8 +31,10 @@ export interface WorkingCapitalChange {
   accountType: 'RECEIVABLES' | 'PAYABLES';
   currentPeriodBalance: number;
   previousPeriodBalance: number;
+  twoPeriodsBackBalance?: number; // Balance from the period before the previous period
   change: number;
   cashFlowAdjustment: number;
+  previousPeriodCashFlowAdjustment?: number; // Cash flow adjustment for the previous period (requires 3 periods of data)
   eventCodes: string[];
   facilityBreakdown?: FacilityWorkingCapitalBreakdown[];
 }

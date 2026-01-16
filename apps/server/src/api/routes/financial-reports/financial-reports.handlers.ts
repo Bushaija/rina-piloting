@@ -956,6 +956,8 @@ export const generateStatement: AppRouteHandler<GenerateStatementRoute> = async 
     }
 
     // Step 8.5: Calculate working capital changes for CASH_FLOW statements from aggregated data
+    // This includes calculating both current period and previous period working capital changes
+    // To calculate previous period change, we need data from the period before the previous period (3 periods total)
     if (statementCode === 'CASH_FLOW') {
       try {
         // Calculate from aggregated event data instead of querying database
@@ -988,30 +990,142 @@ export const generateStatement: AppRouteHandler<GenerateStatementRoute> = async 
           }
         }
 
-        // Calculate changes
+        // Calculate current period changes (current vs previous)
         const receivablesChange = currentReceivables - previousReceivables;
         const payablesChange = currentPayables - previousPayables;
 
-        // Apply cash flow signs
+        // Apply cash flow signs for current period
         const receivablesCashFlowAdjustment = -receivablesChange;
         const payablesCashFlowAdjustment = payablesChange;  // Note: payables increase is positive for cash flow
 
-        // Build working capital result structure
+        // Calculate previous period working capital changes (previous vs two-periods-back)
+        // This requires collecting data from the period before the previous period
+        let previousPeriodReceivablesCashFlowAdjustment = 0;
+        let previousPeriodPayablesCashFlowAdjustment = 0;
+        let twoPeriodsBackReceivables = 0;
+        let twoPeriodsBackPayables = 0;
+
+        console.log(`[WorkingCapital] Starting previous period calculation:`, {
+          hasPreviousPeriodData,
+          previousPeriodLength: eventData.previousPeriod.length,
+          currentReceivables,
+          currentPayables,
+          previousReceivables,
+          previousPayables
+        });
+
+        if (hasPreviousPeriodData && eventData.previousPeriod.length > 0) {
+          // Get the previous period ID to find the period before it
+          const previousPeriodId = eventData.previousPeriod[0]?.reportingPeriodId;
+          
+          console.log(`[WorkingCapital] Previous period ID: ${previousPeriodId}`);
+          
+          if (previousPeriodId) {
+            try {
+              // Collect data from two periods back
+              const twoPeriodsBackFilters: DataFilters = {
+                ...dataFilters,
+                reportingPeriodId: previousPeriodId // This will trigger collection of its previous period
+              };
+              
+              console.log(`[WorkingCapital] Collecting data for two periods back with filters:`, {
+                reportingPeriodId: previousPeriodId,
+                facilityIds: twoPeriodsBackFilters.facilityIds
+              });
+              
+              const twoPeriodsBackEventData = await dataEngine.collectEventData(twoPeriodsBackFilters, eventCodes);
+              
+              console.log(`[WorkingCapital] Two periods back data collected:`, {
+                previousPeriodLength: twoPeriodsBackEventData.previousPeriod.length,
+                currentPeriodLength: twoPeriodsBackEventData.currentPeriod.length
+              });
+              
+              if (twoPeriodsBackEventData.previousPeriod.length > 0) {
+                const twoPeriodsBackAggregation = await dataEngine.aggregateByEvent({
+                  currentPeriod: twoPeriodsBackEventData.previousPeriod,
+                  previousPeriod: [],
+                  metadata: twoPeriodsBackEventData.metadata
+                });
+                
+                // Sum two-periods-back receivables and payables
+                for (const eventCode of receivablesEventCodes) {
+                  twoPeriodsBackReceivables += twoPeriodsBackAggregation.eventTotals.get(eventCode) || 0;
+                }
+                for (const eventCode of payablesEventCodes) {
+                  twoPeriodsBackPayables += twoPeriodsBackAggregation.eventTotals.get(eventCode) || 0;
+                }
+                
+                // Calculate previous period changes (previous vs two-periods-back)
+                const prevPeriodReceivablesChange = previousReceivables - twoPeriodsBackReceivables;
+                const prevPeriodPayablesChange = previousPayables - twoPeriodsBackPayables;
+                
+                // Apply cash flow signs for previous period
+                previousPeriodReceivablesCashFlowAdjustment = -prevPeriodReceivablesChange;
+                previousPeriodPayablesCashFlowAdjustment = prevPeriodPayablesChange;
+                
+                console.log(`[WorkingCapital] Previous period change calculated (with two-periods-back data):`, {
+                  previousReceivables,
+                  twoPeriodsBackReceivables,
+                  prevPeriodReceivablesChange,
+                  previousPeriodReceivablesCashFlowAdjustment,
+                  previousPayables,
+                  twoPeriodsBackPayables,
+                  prevPeriodPayablesChange,
+                  previousPeriodPayablesCashFlowAdjustment
+                });
+              } else {
+                // No data from two periods back - this is the first period with data
+                // Assume starting balance was 0, so the change equals the ending balance
+                console.log(`[WorkingCapital] No data found for two periods back - assuming starting balance was 0`);
+                
+                // Calculate previous period changes (previous vs 0)
+                const prevPeriodReceivablesChange = previousReceivables - 0;
+                const prevPeriodPayablesChange = previousPayables - 0;
+                
+                // Apply cash flow signs for previous period
+                previousPeriodReceivablesCashFlowAdjustment = -prevPeriodReceivablesChange;
+                previousPeriodPayablesCashFlowAdjustment = prevPeriodPayablesChange;
+                
+                console.log(`[WorkingCapital] Previous period change calculated (first period, assuming 0 starting balance):`, {
+                  previousReceivables,
+                  twoPeriodsBackReceivables: 0,
+                  prevPeriodReceivablesChange,
+                  previousPeriodReceivablesCashFlowAdjustment,
+                  previousPayables,
+                  twoPeriodsBackPayables: 0,
+                  prevPeriodPayablesChange,
+                  previousPeriodPayablesCashFlowAdjustment
+                });
+              }
+            } catch (error) {
+              console.warn('[WorkingCapital] Could not calculate previous period working capital change:', error);
+              // Continue with 0 for previous period changes
+            }
+          }
+        } else {
+          console.log(`[WorkingCapital] No previous period data available for working capital calculation`);
+        }
+
+        // Build working capital result structure with both current and previous period adjustments
         workingCapitalResult = {
           receivablesChange: {
             accountType: 'RECEIVABLES',
             currentPeriodBalance: currentReceivables,
             previousPeriodBalance: previousReceivables,
+            twoPeriodsBackBalance: twoPeriodsBackReceivables,
             change: receivablesChange,
             cashFlowAdjustment: receivablesCashFlowAdjustment,
+            previousPeriodCashFlowAdjustment: previousPeriodReceivablesCashFlowAdjustment,
             eventCodes: receivablesEventCodes
           },
           payablesChange: {
             accountType: 'PAYABLES',
             currentPeriodBalance: currentPayables,
             previousPeriodBalance: previousPayables,
+            twoPeriodsBackBalance: twoPeriodsBackPayables,
             change: payablesChange,
             cashFlowAdjustment: payablesCashFlowAdjustment,
+            previousPeriodCashFlowAdjustment: previousPeriodPayablesCashFlowAdjustment,
             eventCodes: payablesEventCodes
           },
           warnings: [],
@@ -1134,15 +1248,28 @@ export const generateStatement: AppRouteHandler<GenerateStatementRoute> = async 
 
       // Task 4.2: Inject working capital cash flow adjustments for CHANGES_RECEIVABLES and CHANGES_PAYABLES
       // Note: We show the cash flow adjustment (change with proper sign), not the balance
+      // Now includes previous period working capital changes calculated from 3 periods of data
       if (statementCode === 'CASH_FLOW' && workingCapitalResult) {
         if (templateLine.lineCode === 'CHANGES_RECEIVABLES') {
           currentPeriodValue = workingCapitalResult.receivablesChange.cashFlowAdjustment;
-          previousPeriodValue = 0; // Previous period comparison not available for working capital changes
+          // Use the calculated previous period cash flow adjustment (requires 3 periods of data)
+          previousPeriodValue = workingCapitalResult.receivablesChange.previousPeriodCashFlowAdjustment || 0;
           isWorkingCapitalComputed = true;
+          console.log(`[WorkingCapital] CHANGES_RECEIVABLES injected:`, {
+            currentPeriodValue,
+            previousPeriodValue,
+            rawPreviousPeriodCashFlowAdjustment: workingCapitalResult.receivablesChange.previousPeriodCashFlowAdjustment
+          });
         } else if (templateLine.lineCode === 'CHANGES_PAYABLES') {
           currentPeriodValue = workingCapitalResult.payablesChange.cashFlowAdjustment;
-          previousPeriodValue = 0; // Previous period comparison not available for working capital changes
+          // Use the calculated previous period cash flow adjustment (requires 3 periods of data)
+          previousPeriodValue = workingCapitalResult.payablesChange.previousPeriodCashFlowAdjustment || 0;
           isWorkingCapitalComputed = true;
+          console.log(`[WorkingCapital] CHANGES_PAYABLES injected:`, {
+            currentPeriodValue,
+            previousPeriodValue,
+            rawPreviousPeriodCashFlowAdjustment: workingCapitalResult.payablesChange.previousPeriodCashFlowAdjustment
+          });
         }
       }
 
