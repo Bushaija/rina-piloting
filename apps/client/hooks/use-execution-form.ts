@@ -1314,6 +1314,11 @@ export function useExecutionForm({
    * Clear payable (pay a liability)
    * This function records when payables are paid, reducing both the payable and Cash at Bank
    * Accounting entry: Dr Payable, Cr Cash at Bank
+   * 
+   * NOTE: This function only updates the payableCleared field on the payable.
+   * Cash at Bank is automatically updated by the auto-calculation useEffect
+   * which includes totalPayablesCleared in its calculation.
+   * This prevents double-counting of the payable cleared amount.
    */
   const clearPayable = useCallback(
     (payableCode: string, clearAmount: number) => {
@@ -1333,33 +1338,19 @@ export function useExecutionForm({
           ? { ...existing.payableCleared, [quarterKey]: newTotalCleared }
           : { [quarterKey]: newTotalCleared };
 
-        // Find Cash at Bank activity code (D_1) to decrease it
-        // Activity code format: {PROJECT}_EXEC_{FACILITY}_D_1
-        const codeParts = payableCode.split('_');
-        const projectPart = codeParts[0]; // HIV, MAL, or TB
-        const facilityPart = codeParts[2]; // HOSPITAL or HEALTH_CENTER (or HEALTH)
-        const cashAtBankCode = `${projectPart}_EXEC_${facilityPart}_D_1`;
-
-        console.log('🔍 [DIAGNOSTIC] clearPayable - Looking for Cash at Bank:', {
+        console.log('💰 [clearPayable] Payable Cleared update:', {
           payableCode,
-          cashAtBankCode,
-          existsInFormData: !!prev[cashAtBankCode],
-          formDataKeys: Object.keys(prev).filter(k => k.includes('_D_')),
-          allFormDataKeys: Object.keys(prev).length
+          quarter: quarterKey,
+          previousCleared,
+          clearAmount,
+          newTotalCleared,
+          payableClearedObj,
+          note: 'Cash at Bank will be updated by auto-calculation (not here to avoid double-counting)'
         });
 
-        // Get current Cash at Bank value for this quarter
-        const cashAtBank = prev[cashAtBankCode];
-        const currentCashBalance = Number(cashAtBank?.[quarterKey]) || 0;
-        
-        console.log('🔍 [DIAGNOSTIC] clearPayable - Cash at Bank data:', {
-          cashAtBankCode,
-          found: !!cashAtBank,
-          currentCashBalance,
-          clearAmount,
-          newBalance: currentCashBalance - clearAmount
-        });
-        const newCashBalance = currentCashBalance - clearAmount; // DECREASE cash when paying payable
+        // NOTE: We do NOT update Cash at Bank here!
+        // Cash at Bank is auto-calculated by the useEffect that includes totalPayablesCleared.
+        // Updating it here would cause double-counting of the payable cleared amount.
 
         const next = {
           ...prev,
@@ -1377,36 +1368,19 @@ export function useExecutionForm({
             payableCleared: payableClearedObj,
             priorYearAdjustment: existing?.priorYearAdjustment ?? {},
           },
-          // Update Cash at Bank (decrease when paying payable)
-          [cashAtBankCode]: {
-            q1: cashAtBank?.q1 ?? 0,
-            q2: cashAtBank?.q2 ?? 0,
-            q3: cashAtBank?.q3 ?? 0,
-            q4: cashAtBank?.q4 ?? 0,
-            [quarterKey]: newCashBalance,
-            comment: cashAtBank?.comment ?? "",
-            paymentStatus: cashAtBank?.paymentStatus,
-            amountPaid: cashAtBank?.amountPaid,
-            netAmount: cashAtBank?.netAmount ?? {},
-            vatAmount: cashAtBank?.vatAmount ?? {},
-            vatCleared: cashAtBank?.vatCleared ?? {},
-            priorYearAdjustment: cashAtBank?.priorYearAdjustment ?? {},
-          },
         };
 
         onDataChange?.(next);
         return next;
       });
 
-      form.setValue(`${payableCode}.payableCleared.${quarterKey}`, clearAmount, { shouldDirty: true });
-      
-      // Also update Cash at Bank in the form
-      const codeParts = payableCode.split('_');
-      const projectPart = codeParts[0];
-      const facilityPart = codeParts[2];
-      const cashAtBankCode = `${projectPart}_EXEC_${facilityPart}_D_1`;
-      const currentCashBalance = Number(formData[cashAtBankCode]?.[quarterKey]) || 0;
-      form.setValue(`${cashAtBankCode}.${quarterKey}`, currentCashBalance - clearAmount, { shouldDirty: true });
+      // Sync accumulated payable cleared amount into RHF form state for dirtiness/consistency
+      const existingForForm = formData[payableCode];
+      const previousClearedForForm = (typeof existingForForm?.payableCleared === 'object' && existingForForm.payableCleared !== null)
+        ? (existingForForm.payableCleared[quarterKey] || 0)
+        : 0;
+      const newTotalClearedForForm = previousClearedForForm + clearAmount;
+      form.setValue(`${payableCode}.payableCleared.${quarterKey}`, newTotalClearedForForm, { shouldDirty: true });
     },
     [form, onDataChange, quarter, formData]
   );
@@ -1474,6 +1448,11 @@ export function useExecutionForm({
    * Clear VAT receivable for a VAT-applicable expense
    * This function records when VAT refunds are received from RRA
    * Requirements: 3.2 (decrease VAT receivable), 3.3 (increase Cash at Bank)
+   * 
+   * NOTE: This function only updates the vatCleared field on the expense.
+   * Cash at Bank is automatically updated by the auto-calculation useEffect
+   * which includes totalVATCleared in its calculation.
+   * This prevents double-counting of the VAT cleared amount.
    */
   const clearVAT = useCallback(
     (activityCode: string, clearAmount: number) => {
@@ -1508,36 +1487,13 @@ export function useExecutionForm({
           newTotalCleared,
           vatClearedObj,
           expenseVATAmount: existing?.vatAmount?.[quarterKey] || 0,
-          expenseNetAmount: existing?.netAmount?.[quarterKey] || 0
+          expenseNetAmount: existing?.netAmount?.[quarterKey] || 0,
+          note: 'Cash at Bank will be updated by auto-calculation (not here to avoid double-counting)'
         });
 
-        // Find Cash at Bank activity code (D_1) to increase it
-        // Activity code format: {PROJECT}_EXEC_{FACILITY}_D_1
-        const codeParts = activityCode.split('_');
-        const projectPart = codeParts[0]; // HIV, MAL, or TB
-        const facilityPart = codeParts[2]; // HOSPITAL or HEALTH_CENTER (or HEALTH)
-        const cashAtBankCode = `${projectPart}_EXEC_${facilityPart}_D_1`;
-
-        console.log('🔍 [DIAGNOSTIC] clearVAT - Looking for Cash at Bank:', {
-          activityCode,
-          cashAtBankCode,
-          existsInFormData: !!prev[cashAtBankCode],
-          formDataKeys: Object.keys(prev).filter(k => k.includes('_D_')),
-          allFormDataKeys: Object.keys(prev).length
-        });
-
-        // Get current Cash at Bank value for this quarter
-        const cashAtBank = prev[cashAtBankCode];
-        const currentCashBalance = Number(cashAtBank?.[quarterKey]) || 0;
-        
-        console.log('🔍 [DIAGNOSTIC] clearVAT - Cash at Bank data:', {
-          cashAtBankCode,
-          found: !!cashAtBank,
-          currentCashBalance,
-          clearAmount,
-          newBalance: currentCashBalance + clearAmount
-        });
-        const newCashBalance = currentCashBalance + clearAmount;
+        // NOTE: We do NOT update Cash at Bank here!
+        // Cash at Bank is auto-calculated by the useEffect that includes totalVATCleared.
+        // Updating it here would cause double-counting of the VAT cleared amount.
 
         const next = {
           ...prev,
@@ -1553,21 +1509,6 @@ export function useExecutionForm({
             vatAmount: existing?.vatAmount ?? {},
             vatCleared: vatClearedObj,
             priorYearAdjustment: existing?.priorYearAdjustment ?? {},
-          },
-          // Update Cash at Bank (Requirement 3.3)
-          [cashAtBankCode]: {
-            q1: cashAtBank?.q1 ?? 0,
-            q2: cashAtBank?.q2 ?? 0,
-            q3: cashAtBank?.q3 ?? 0,
-            q4: cashAtBank?.q4 ?? 0,
-            [quarterKey]: newCashBalance,
-            comment: cashAtBank?.comment ?? "",
-            paymentStatus: cashAtBank?.paymentStatus,
-            amountPaid: cashAtBank?.amountPaid,
-            netAmount: cashAtBank?.netAmount ?? {},
-            vatAmount: cashAtBank?.vatAmount ?? {},
-            vatCleared: cashAtBank?.vatCleared ?? {},
-            priorYearAdjustment: cashAtBank?.priorYearAdjustment ?? {},
           },
         };
 

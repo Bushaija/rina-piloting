@@ -71,22 +71,43 @@ export function extractClosingBalances(
   
   try {
     // Access activities from formData
-    const activities = executionData?.formData?.activities;
+    const rawActivities = executionData?.formData?.activities;
     
     console.log('🔍 [BalanceExtractor Debug] Extracting closing balances:', {
       quarter,
       executionId: executionData?.id,
       hasFormData: !!executionData?.formData,
-      hasActivities: !!activities,
-      activitiesType: typeof activities,
-      activitiesIsArray: Array.isArray(activities),
-      activitiesCount: activities ? (Array.isArray(activities) ? activities.length : Object.keys(activities).length) : 0,
-      sampleKeys: activities ? (Array.isArray(activities) ? activities.slice(0, 3).map((a: any) => a.code) : Object.keys(activities).slice(0, 5)) : []
+      hasActivities: !!rawActivities,
+      activitiesType: typeof rawActivities,
+      activitiesIsArray: Array.isArray(rawActivities),
+      activitiesCount: rawActivities ? (Array.isArray(rawActivities) ? rawActivities.length : Object.keys(rawActivities).length) : 0,
+      sampleKeys: rawActivities ? (Array.isArray(rawActivities) ? rawActivities.slice(0, 3).map((a: any) => a.code) : Object.keys(rawActivities).slice(0, 5)) : []
     });
     
-    if (!activities || typeof activities !== "object") {
+    if (!rawActivities || typeof rawActivities !== "object") {
       console.warn("No activities found in execution data");
       return closingBalances;
+    }
+    
+    // CRITICAL FIX: Normalize activities to object keyed by code
+    // Activities can be stored as either an array or an object
+    // When stored as array, Object.entries returns indices (0, 1, 2) instead of activity codes
+    let activities: Record<string, any>;
+    if (Array.isArray(rawActivities)) {
+      // Convert array to object keyed by activity code
+      activities = rawActivities.reduce((acc: Record<string, any>, activity: any) => {
+        if (activity?.code) {
+          acc[activity.code] = activity;
+        }
+        return acc;
+      }, {});
+      console.log('🔍 [BalanceExtractor Debug] Converted array to object:', {
+        originalCount: rawActivities.length,
+        convertedCount: Object.keys(activities).length,
+        sampleCodes: Object.keys(activities).slice(0, 5)
+      });
+    } else {
+      activities = rawActivities;
     }
     
     // Extract Section D (Financial Assets) closing balances

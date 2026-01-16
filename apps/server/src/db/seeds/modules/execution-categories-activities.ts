@@ -94,6 +94,7 @@ const hivActivities: ActivityData[] = [
 
     // X. Miscellaneous Adjustments (NEW: for double-entry Other Receivables)
     { categoryCode: 'X', subCategoryCode: null, name: 'Other Receivable', displayOrder: 1, isTotalRow: false, activityType: 'MISCELLANEOUS_ADJUSTMENT', applicableTo: 'both' },
+    { categoryCode: 'X', subCategoryCode: null, name: 'Other Payables', displayOrder: 2, isTotalRow: false, activityType: 'MISCELLANEOUS_ADJUSTMENT', applicableTo: 'both' },
 
     // D. Financial Assets (facility-specific variations)
     { categoryCode: 'D', subCategoryCode: null, name: 'Cash at bank', displayOrder: 1, isTotalRow: false, activityType: 'ASSET', applicableTo: 'both' },
@@ -125,7 +126,8 @@ const hivActivities: ActivityData[] = [
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 13: Maintenance', displayOrder: 13, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 14: Fuel', displayOrder: 14, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 15: Office supplies', displayOrder: 15, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'E. Financial Liabilities', displayOrder: 16, isTotalRow: true, activityType: 'LIABILITY_TOTAL', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 16: Other payables', displayOrder: 16, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'E. Financial Liabilities', displayOrder: 17, isTotalRow: true, activityType: 'LIABILITY_TOTAL', applicableTo: 'both' },
 
     // F. Net Financial Assets (computed for both)
     { categoryCode: 'F', subCategoryCode: null, name: 'F. Net Financial Assets', displayOrder: 1, isTotalRow: true, activityType: 'COMPUTED', computationRules: { formula: 'D - E', description: 'Financial Assets minus Financial Liabilities' }, applicableTo: 'both' },

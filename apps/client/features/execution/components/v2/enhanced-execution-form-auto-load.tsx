@@ -93,14 +93,14 @@ export function EnhancedExecutionFormAutoLoad({
     return matchingPeriod?.id;
   }, [quarter, previousFiscalYearPeriodQuery.data, currentReportingPeriod?.periodType]);
 
-  console.log('🔄 [Cross-Fiscal-Year Rollover] Config:', {
-    quarter,
-    currentFiscalYear,
-    previousFiscalYear,
-    previousFiscalYearReportingPeriodId,
-    currentReportingPeriodId: reportingPeriodId,
-    previousFiscalYearPeriods: previousFiscalYearPeriodQuery.data
-  });
+  // console.log('🔄 [Cross-Fiscal-Year Rollover] Config:', {
+  //   quarter,
+  //   currentFiscalYear,
+  //   previousFiscalYear,
+  //   previousFiscalYearReportingPeriodId,
+  //   currentReportingPeriodId: reportingPeriodId,
+  //   previousFiscalYearPeriods: previousFiscalYearPeriodQuery.data
+  // });
 
   // Fetch previous quarter execution data for balance rollover
   const previousQuarterQuery = useGetPreviousQuarterExecution({
@@ -387,6 +387,15 @@ export function EnhancedExecutionFormAutoLoad({
   // Get opening balance from previous quarter's closing balance
   // For Q1 or when no previous quarter exists, opening balance is 0
   const openingBalance = useMemo(() => {
+    // 🐛 DEBUG: Log openingBalance calculation inputs
+    console.log('🔍 [openingBalance] Calculation inputs:', {
+      previousQuarterBalancesExists: previousQuarterBalances?.exists,
+      hasSectionD: !!previousQuarterBalances?.closingBalances?.D,
+      sectionDKeys: previousQuarterBalances?.closingBalances?.D ? Object.keys(previousQuarterBalances.closingBalances.D) : [],
+      sectionDValues: previousQuarterBalances?.closingBalances?.D,
+      quarter,
+    });
+
     // If we have previous quarter data, use its closing cash balance
     if (previousQuarterBalances?.exists && previousQuarterBalances.closingBalances?.D) {
       const cashAtBankCode = Object.keys(previousQuarterBalances.closingBalances.D).find(code =>
@@ -397,8 +406,17 @@ export function EnhancedExecutionFormAutoLoad({
         ? previousQuarterBalances.closingBalances.D[cashAtBankCode]
         : 0;
 
+      // 🐛 DEBUG: Log result
+      console.log('🔍 [openingBalance] Found from previousQuarter:', {
+        cashAtBankCode,
+        cashBalance,
+      });
+
       return cashBalance;
     }
+
+    // 🐛 DEBUG: Log fallback
+    console.log('🔍 [openingBalance] Fallback to 0 (no previous quarter data)');
 
     // For Q1 or when no previous quarter exists, opening balance is 0
     return 0;
@@ -467,6 +485,21 @@ export function EnhancedExecutionFormAutoLoad({
   // State to track validation errors for miscellaneous adjustments
   const [miscValidationError, setMiscValidationError] = React.useState<ValidationResult | null>(null);
 
+  // 🐛 DEBUG: Log previousQuarterBalances for validation debugging
+  useEffect(() => {
+    console.log('🔍 [VALIDATION DEBUG] previousQuarterBalances:', {
+      exists: previousQuarterBalances?.exists,
+      quarter: previousQuarterBalances?.quarter,
+      executionId: previousQuarterBalances?.executionId,
+      hasClosingBalances: !!previousQuarterBalances?.closingBalances,
+      sectionDKeys: previousQuarterBalances?.closingBalances?.D ? Object.keys(previousQuarterBalances.closingBalances.D) : [],
+      sectionDValues: previousQuarterBalances?.closingBalances?.D,
+      openingBalance,
+      currentQuarter: quarter,
+      effectiveMode,
+    });
+  }, [previousQuarterBalances, openingBalance, quarter, effectiveMode]);
+
   // Calculate Cash at Bank before adjustment (for validation)
   // Note: We call useExpenseCalculations at the top level, not inside useMemo
   const { cashAtBank: cashAtBankBeforeAdjustment } = useExpenseCalculations({
@@ -477,6 +510,17 @@ export function EnhancedExecutionFormAutoLoad({
     otherReceivableAmount: 0,  // Don't include adjustment for validation
     previousQuarterBalances,  // NEW: Pass previous quarter balances for rollover
   });
+
+  // 🐛 DEBUG: Log cashAtBankBeforeAdjustment calculation result
+  useEffect(() => {
+    console.log('🔍 [VALIDATION DEBUG] cashAtBankBeforeAdjustment:', {
+      cashAtBankBeforeAdjustment,
+      openingBalance,
+      quarter,
+      otherReceivableAmount,
+      previousQuarterBalancesExists: previousQuarterBalances?.exists,
+    });
+  }, [cashAtBankBeforeAdjustment, openingBalance, quarter, otherReceivableAmount, previousQuarterBalances]);
 
   // Use expense calculations hook to compute Cash at Bank, Payables, and VAT Receivables
   // Pass previousQuarterBalances for quarterly rollover support
@@ -505,10 +549,19 @@ export function EnhancedExecutionFormAutoLoad({
       return;
     }
 
+    // 🐛 DEBUG: Log validation inputs
+    console.log('🔍 [VALIDATION DEBUG] Running validation:', {
+      otherReceivableAmount,
+      cashAtBankBeforeAdjustment,
+      willFail: otherReceivableAmount > cashAtBankBeforeAdjustment,
+    });
+
     const validationResult = validateMiscellaneousAdjustments(
       otherReceivableAmount,
       cashAtBankBeforeAdjustment
     );
+
+    console.log('🔍 [VALIDATION DEBUG] Validation result:', validationResult);
 
     setMiscValidationError(validationResult);
   }, [otherReceivableAmount, cashAtBankBeforeAdjustment, effectiveMode, form.activities]);

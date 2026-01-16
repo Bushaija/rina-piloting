@@ -163,6 +163,16 @@ export function useExpenseCalculations({
   // Extract effective opening balance from previous quarter or fallback to parameter
   // Requirements: 4.1, 4.2, 4.4, 9.1
   const effectiveOpeningBalance = useMemo(() => {
+    // 🐛 DEBUG: Log inputs for effectiveOpeningBalance calculation
+    console.log('🔍 [useExpenseCalculations] effectiveOpeningBalance inputs:', {
+      previousQuarterBalancesExists: previousQuarterBalances?.exists,
+      hasSectionD: !!previousQuarterBalances?.closingBalances?.D,
+      sectionDKeys: previousQuarterBalances?.closingBalances?.D ? Object.keys(previousQuarterBalances.closingBalances.D) : [],
+      sectionDValues: previousQuarterBalances?.closingBalances?.D,
+      openingBalanceParam: openingBalance,
+      quarter,
+    });
+
     if (previousQuarterBalances?.exists && previousQuarterBalances.closingBalances?.D) {
       // Find Cash at Bank activity code in Section D
       // Cash at Bank is D_1 (first item in Section D)
@@ -175,8 +185,18 @@ export function useExpenseCalculations({
         ? previousQuarterBalances.closingBalances.D[cashAtBankCode] 
         : 0;
 
+      // 🐛 DEBUG: Log result
+      console.log('🔍 [useExpenseCalculations] effectiveOpeningBalance from previousQuarter:', {
+        cashAtBankCode,
+        cashBalance,
+        allD1Codes: Object.keys(previousQuarterBalances.closingBalances.D).filter(k => k.includes('_D_1')),
+      });
+
       return cashBalance;
     }
+
+    // 🐛 DEBUG: Log fallback
+    console.log('🔍 [useExpenseCalculations] effectiveOpeningBalance fallback to openingBalance:', openingBalance);
 
     // Fallback to openingBalance parameter for backward compatibility
     return openingBalance;
@@ -238,9 +258,20 @@ export function useExpenseCalculations({
 
   // Calculate all financial values
   const calculations = useMemo(() => {
+    // 🐛 DEBUG: Log activities structure
+    console.log('🔍 [useExpenseCalculations] activities structure:', {
+      hasActivities: !!activities,
+      activitiesType: typeof activities,
+      hasB: !!activities?.B,
+      hasBSubCategories: !!activities?.B?.subCategories,
+      bSubCategoriesKeys: activities?.B?.subCategories ? Object.keys(activities.B.subCategories) : [],
+      effectiveOpeningBalance,
+    });
+
     // Get Section B expenses
     const sectionB = activities?.B;
     if (!sectionB?.subCategories) {
+      console.log('🔍 [useExpenseCalculations] No Section B subCategories, returning effectiveOpeningBalance:', effectiveOpeningBalance);
       return {
         cashAtBank: effectiveOpeningBalance,
         payables: previousQuarterPayables,
