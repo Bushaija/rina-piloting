@@ -398,9 +398,31 @@ export function useExecutionForm({
     }, 0);
 
     // Calculate total Other Receivables cleared (increases cash when receivables are collected)
-    const otherReceivableCodes = Object.keys(formData).filter(code => 
-      code.includes('_D_') && (code.includes('D-01_5') || code.includes('Other'))
-    );
+    const otherReceivableCodes = Object.keys(formData).filter(code => {
+      if (!code.includes('_D_')) return false;
+      
+      // Check in hierarchical data for the activity name
+      if (activitiesQuery.data) {
+        const hierarchicalData = activitiesQuery.data as any;
+        const sectionD = hierarchicalData?.D;
+        if (sectionD?.children) {
+          // Search through all D section items (including subcategories)
+          for (const child of sectionD.children) {
+            if (child.isSubcategory && child.children) {
+              // Search in subcategory children
+              const found = child.children.find((item: any) => 
+                item.code === code && item.name?.toLowerCase().includes('other receivable')
+              );
+              if (found) return true;
+            } else if (child.code === code && child.name?.toLowerCase().includes('other receivable')) {
+              return true;
+            }
+          }
+        }
+      }
+      
+      return false;
+    });
     const totalOtherReceivablesCleared = otherReceivableCodes.reduce((sum, code) => {
       const receivableData = formData[code];
       const receivableCleared = Number(receivableData?.otherReceivableCleared?.[quarterKey]) || 0;
@@ -972,7 +994,7 @@ export function useExecutionForm({
     const otherPayablesXCode = xCodes.find(c => c.includes('_X_2'));
     
     // Find Other Receivables in D section by name (works for all programs)
-    const otherReceivablesCode = Object.keys(formData).find(c => {
+    let otherReceivablesCode = Object.keys(formData).find(c => {
       // Find by checking if it's in Section D and contains "Other" in the activity name
       if (!c.includes('_D_')) return false;
       
@@ -998,6 +1020,54 @@ export function useExecutionForm({
       
       return false;
     });
+    
+    // If not found in formData, search in hierarchical data and initialize it
+    if (!otherReceivablesCode && activitiesQuery.data) {
+      const hierarchicalData = activitiesQuery.data as any;
+      const sectionD = hierarchicalData?.D;
+      if (sectionD?.children) {
+        for (const child of sectionD.children) {
+          if (child.isSubcategory && child.children) {
+            const found = child.children.find((item: any) => 
+              item.name?.toLowerCase().includes('other receivable')
+            );
+            if (found) {
+              otherReceivablesCode = found.code;
+              console.log('🔧 [X->D/E Calculation] Initializing Other Receivables in formData:', otherReceivablesCode);
+              setFormData(prev => ({
+                ...prev,
+                [otherReceivablesCode!]: {
+                  q1: 0,
+                  q2: 0,
+                  q3: 0,
+                  q4: 0,
+                  comment: '',
+                  otherReceivableCleared: {},
+                }
+              }));
+              // Return early to let the next render cycle handle the calculation
+              return;
+            }
+          } else if (child.name?.toLowerCase().includes('other receivable')) {
+            otherReceivablesCode = child.code;
+            console.log('🔧 [X->D/E Calculation] Initializing Other Receivables in formData:', otherReceivablesCode);
+            setFormData(prev => ({
+              ...prev,
+              [otherReceivablesCode!]: {
+                q1: 0,
+                q2: 0,
+                q3: 0,
+                q4: 0,
+                comment: '',
+                otherReceivableCleared: {},
+              }
+            }));
+            // Return early to let the next render cycle handle the calculation
+            return;
+          }
+        }
+      }
+    }
     
     // Find Other Payables code by name (works for all programs: HIV E_16, Malaria E_11, TB E_9)
     let otherPayablesCode: string | undefined;
@@ -1052,12 +1122,21 @@ export function useExecutionForm({
       // Additional debug info
       allECodes: eCodes,
       allXCodes: xCodes,
+      allDCodes: Object.keys(formData).filter(k => k.includes('_D_')),
       otherPayablesInFormData: otherPayablesCode ? (otherPayablesCode in formData) : false,
       sectionEItemsCount: activitiesQuery.data ? ((activitiesQuery.data as any)?.E?.items?.length || 0) : 0,
       // Other Receivables debug
       otherReceivablesInFormData: otherReceivablesCode ? (otherReceivablesCode in formData) : false,
       otherReceivablesCurrentValue: otherReceivablesCode ? formData[otherReceivablesCode]?.[quarterKey] : 'N/A',
-      previousQuarterOtherReceivables: previousQuarterBalances?.closingBalances?.D?.[otherReceivablesCode || ''] || 0
+      previousQuarterOtherReceivables: previousQuarterBalances?.closingBalances?.D?.[otherReceivablesCode || ''] || 0,
+      // Section D structure debug
+      sectionDChildren: activitiesQuery.data ? ((activitiesQuery.data as any)?.D?.children?.length || 0) : 0,
+      sectionDChildrenSample: activitiesQuery.data ? ((activitiesQuery.data as any)?.D?.children?.slice(0, 3).map((c: any) => ({ 
+        code: c.code, 
+        name: c.name, 
+        isSubcategory: c.isSubcategory,
+        childrenCount: c.children?.length || 0
+      })) || []) : []
     });
     
     // Calculate Other Payables from X section Other Payables (X_2)

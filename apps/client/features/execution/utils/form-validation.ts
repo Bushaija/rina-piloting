@@ -259,17 +259,29 @@ export function validateFormData(
   });
 
 
+  // DISABLED: Budget overspending validation
+  // Accountants are now allowed to spend more than the planned budget
+  // if (plannedBudget !== undefined && plannedBudget !== null && plannedBudget > 0) {
+  //   if (totalExpenditures > plannedBudget) {
+  //     errors.push({
+  //       field: 'total_expenditures',
+  //       message: `Total expenditures (${totalExpenditures.toFixed(2)}) exceed the planned budget (${plannedBudget.toFixed(2)}). Please adjust your expenses to stay within budget.`,
+  //       type: 'error',
+  //     });
+  //   }
+  // } else if (totalExpenditures > 0) {
+  //   // Warning: No planned budget found
+  //   console.warn('⚠️ [Budget Validation] No planned budget found for this facility/period. Expenditures cannot be validated against budget.');
+  // }
+  
+  // Log budget comparison for informational purposes only
   if (plannedBudget !== undefined && plannedBudget !== null && plannedBudget > 0) {
-    if (totalExpenditures > plannedBudget) {
-      errors.push({
-        field: 'total_expenditures',
-        message: `Total expenditures (${totalExpenditures.toFixed(2)}) exceed the planned budget (${plannedBudget.toFixed(2)}). Please adjust your expenses to stay within budget.`,
-        type: 'error',
-      });
-    }
-  } else if (totalExpenditures > 0) {
-    // Warning: No planned budget found
-    console.warn('⚠️ [Budget Validation] No planned budget found for this facility/period. Expenditures cannot be validated against budget.');
+    console.log('💰 [Budget Info]', {
+      totalExpenditures,
+      plannedBudget,
+      difference: totalExpenditures - plannedBudget,
+      percentageUsed: ((totalExpenditures / plannedBudget) * 100).toFixed(2) + '%'
+    });
   }
 
   return {

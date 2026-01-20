@@ -166,10 +166,23 @@ function isPriorYearAdjustmentSubcategory(subcategoryId: string): boolean {
 // Helper function to check if an activity is Section D "Other Receivables" (auto-calculated from Section X)
 function isOtherReceivablesField(activityId: string): boolean {
   // Other Receivables can be identified by:
-  // 1. Activity code containing '_D_D-01_5' (subcategory D-01, display order 5)
-  // 2. Activity code containing '_D_4' (legacy format)
-  // 3. Activity name containing 'other receivable' (checked elsewhere)
-  return activityId.includes('_D_D-01_5') || activityId.includes('_D_4');
+  // 1. Activity code containing '_D_D-01_' (subcategory D-01 in Section D)
+  // 2. Display order >= 5 (comes after VAT receivables)
+  // Note: Display order varies by program:
+  //   - HIV: display order 5 (after 4 VAT receivables)
+  //   - Malaria: display order 7 (after 6 VAT receivables)
+  //   - TB: display order 5 (after 4 VAT receivables)
+  // We check for D-01 subcategory and extract the display order
+  if (!activityId.includes('_D_D-01_')) return false;
+  
+  // Extract display order from activity code (last number after D-01_)
+  const match = activityId.match(/_D-01_(\d+)$/);
+  if (!match) return false;
+  
+  const displayOrder = parseInt(match[1], 10);
+  // Other Receivables is always the last item in D-01 subcategory (after all VAT receivables)
+  // For HIV/TB: display order 5, for Malaria: display order 7
+  return displayOrder >= 5;
 }
 
 // Helper function to render expense input cell (VAT or regular)
@@ -411,6 +424,8 @@ function SectionDRenderer({ section, ctx, projectType, facilityType, quarter, ac
         'maintenance': 0,
         'fuel': 0,
         'office_supplies': 0,
+        'car_hiring': 0,
+        'consumables': 0,
       };
     });
 
@@ -428,6 +443,8 @@ function SectionDRenderer({ section, ctx, projectType, facilityType, quarter, ac
       'maintenance': '_D_VAT_MAINTENANCE',
       'fuel': '_D_VAT_FUEL',
       'office_supplies': '_D_VAT_SUPPLIES',
+      'car_hiring': '_D_VAT_CAR_HIRING',
+      'consumables': '_D_VAT_CONSUMABLES',
     };
 
     // Calculate opening balances for each VAT category from previous quarter
@@ -436,6 +453,8 @@ function SectionDRenderer({ section, ctx, projectType, facilityType, quarter, ac
       'maintenance': 0,
       'fuel': 0,
       'office_supplies': 0,
+      'car_hiring': 0,
+      'consumables': 0,
     };
 
     // Only get opening balances if we're not in Q1
