@@ -89,6 +89,8 @@ function extractVATCategoryFromTitle(itemTitle: string): VATApplicableCategory |
   if (titleLower.includes('maintenance')) return 'maintenance';
   if (titleLower.includes('fuel')) return 'fuel';
   if (titleLower.includes('supplies') || titleLower.includes('office')) return 'office_supplies';
+  if (titleLower.includes('car hiring') || titleLower.includes('car-hiring') || titleLower.includes('entomological')) return 'car_hiring';
+  if (titleLower.includes('consumable')) return 'consumables';
   return null;
 }
 
@@ -113,6 +115,8 @@ function findExpenseCodeForVATCategory(
     'maintenance': ['maintenance'],
     'fuel': ['fuel'],
     'office_supplies': ['office supplies', 'supplies'],
+    'car_hiring': ['car hiring', 'car-hiring', 'entomological'],
+    'consumables': ['consumable'],
   };
 
   const patterns = namePatterns[vatCategory];

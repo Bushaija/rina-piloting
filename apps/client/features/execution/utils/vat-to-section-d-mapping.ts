@@ -7,11 +7,10 @@
  * UPDATED: VAT receivables are now classified in Section D (Financial Assets) instead of Section E,
  * as they represent amounts owed TO the facility by RRA, making them assets rather than liabilities.
  * 
- * VAT-based expenses (4 categories):
- * - Communication - All
- * - Maintenance for vehicles, ICT, and medical equipments
- * - Fuel
- * - Office Supplies
+ * VAT-based expenses:
+ * - HIV (4 categories): Communication - All, Maintenance, Fuel, Office Supplies
+ * - Malaria (6 categories): HIV's 4 + Car Hiring, Consumables
+ * - TB (4 categories): Same as HIV
  */
 
 import { VAT_APPLICABLE_CATEGORIES, type VATApplicableCategory } from './vat-applicable-expenses';
@@ -30,8 +29,8 @@ import { VAT_APPLICABLE_CATEGORIES, type VATApplicableCategory } from './vat-app
  * getVATReceivableCode('HIV', 'hospital', 'communication_all')
  * // Returns: "HIV_EXEC_HOSPITAL_D_VAT_COMMUNICATION_ALL"
  * 
- * getVATReceivableCode('MAL', 'health_center', 'maintenance')
- * // Returns: "MAL_EXEC_HEALTH_CENTER_D_VAT_MAINTENANCE"
+ * getVATReceivableCode('MAL', 'health_center', 'car_hiring')
+ * // Returns: "MAL_EXEC_HEALTH_CENTER_D_VAT_CAR_HIRING"
  * ```
  */
 export function getVATReceivableCode(
@@ -48,6 +47,8 @@ export function getVATReceivableCode(
     [VAT_APPLICABLE_CATEGORIES.MAINTENANCE]: `${prefix}_D_VAT_MAINTENANCE`,
     [VAT_APPLICABLE_CATEGORIES.FUEL]: `${prefix}_D_VAT_FUEL`,
     [VAT_APPLICABLE_CATEGORIES.OFFICE_SUPPLIES]: `${prefix}_D_VAT_SUPPLIES`,
+    [VAT_APPLICABLE_CATEGORIES.CAR_HIRING]: `${prefix}_D_VAT_CAR_HIRING`,
+    [VAT_APPLICABLE_CATEGORIES.CONSUMABLES]: `${prefix}_D_VAT_CONSUMABLES`,
   };
   
   return vatCodeMap[vatCategory];
@@ -64,8 +65,8 @@ export function getVATReceivableCode(
  * getVATReceivableLabel('communication_all')
  * // Returns: "VAT Receivable 1: Communication - All"
  * 
- * getVATReceivableLabel('maintenance')
- * // Returns: "VAT Receivable 2: Maintenance"
+ * getVATReceivableLabel('car_hiring')
+ * // Returns: "VAT Receivable 5: Car hiring"
  * ```
  */
 export function getVATReceivableLabel(vatCategory: VATApplicableCategory): string {
@@ -74,6 +75,8 @@ export function getVATReceivableLabel(vatCategory: VATApplicableCategory): strin
     [VAT_APPLICABLE_CATEGORIES.MAINTENANCE]: 'VAT Receivable 2: Maintenance',
     [VAT_APPLICABLE_CATEGORIES.FUEL]: 'VAT Receivable 3: Fuel',
     [VAT_APPLICABLE_CATEGORIES.OFFICE_SUPPLIES]: 'VAT Receivable 4: Office supplies',
+    [VAT_APPLICABLE_CATEGORIES.CAR_HIRING]: 'VAT Receivable 5: Car hiring',
+    [VAT_APPLICABLE_CATEGORIES.CONSUMABLES]: 'VAT Receivable 6: Consumables',
   };
   
   return labelMap[vatCategory];
@@ -95,6 +98,9 @@ export function getVATReceivableLabel(vatCategory: VATApplicableCategory): strin
  * //   "HIV_EXEC_HOSPITAL_D_VAT_FUEL",
  * //   "HIV_EXEC_HOSPITAL_D_VAT_SUPPLIES"
  * // ]
+ * 
+ * getAllVATReceivableCodes('MAL', 'hospital')
+ * // Returns: HIV's 4 + CAR_HIRING + CONSUMABLES (6 total)
  * ```
  */
 export function getAllVATReceivableCodes(
@@ -115,6 +121,7 @@ export function getAllVATReceivableCodes(
  * @example
  * ```typescript
  * isVATReceivableCode("HIV_EXEC_HOSPITAL_D_VAT_COMMUNICATION_ALL") // true
+ * isVATReceivableCode("MAL_EXEC_HOSPITAL_D_VAT_CAR_HIRING") // true
  * isVATReceivableCode("HIV_EXEC_HOSPITAL_D_1") // false
  * ```
  */
@@ -131,6 +138,7 @@ export function isVATReceivableCode(code: string): boolean {
  * @example
  * ```typescript
  * getVATCategoryFromCode("HIV_EXEC_HOSPITAL_D_VAT_COMMUNICATION_ALL") // "communication_all"
+ * getVATCategoryFromCode("MAL_EXEC_HOSPITAL_D_VAT_CAR_HIRING") // "car_hiring"
  * getVATCategoryFromCode("HIV_EXEC_HOSPITAL_D_1") // null
  * ```
  */
@@ -146,6 +154,8 @@ export function getVATCategoryFromCode(code: string): VATApplicableCategory | nu
   if (codeLower.includes('_vat_maintenance')) return VAT_APPLICABLE_CATEGORIES.MAINTENANCE;
   if (codeLower.includes('_vat_fuel')) return VAT_APPLICABLE_CATEGORIES.FUEL;
   if (codeLower.includes('_vat_supplies')) return VAT_APPLICABLE_CATEGORIES.OFFICE_SUPPLIES;
+  if (codeLower.includes('_vat_car_hiring')) return VAT_APPLICABLE_CATEGORIES.CAR_HIRING;
+  if (codeLower.includes('_vat_consumables')) return VAT_APPLICABLE_CATEGORIES.CONSUMABLES;
   
   // Legacy category names (for backward compatibility)
   if (codeLower.includes('_vat_airtime')) return VAT_APPLICABLE_CATEGORIES.COMMUNICATION_ALL;

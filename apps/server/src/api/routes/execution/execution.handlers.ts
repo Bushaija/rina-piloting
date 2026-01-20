@@ -2320,6 +2320,7 @@ export const getActivities: AppRouteHandler<GetActivitiesRoute> = async (c) => {
         categoryCode: schemaActivityCategories.code,
         categoryDisplayOrder: schemaActivityCategories.displayOrder,
         fieldMappings: dynamicActivities.fieldMappings,
+        metadata: dynamicActivities.metadata, // CRITICAL: Include metadata for payable mappings
         isComputed: schemaActivityCategories.isComputed,
         computationFormula: schemaActivityCategories.computationFormula,
       })

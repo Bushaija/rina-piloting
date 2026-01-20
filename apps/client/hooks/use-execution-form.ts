@@ -12,6 +12,7 @@ import {
 } from "@/features/execution/utils/form-validation";
 import { useExecutionFormLoader } from "@/features/execution/hooks/use-execution-form-loader";
 import { usePlanningDataSummary } from "./queries/planning/use-planning-data-summary";
+import { generateExpenseToPayableMapping } from "@/features/execution/utils/expense-to-payable-mapping";
 
 type ProjectType = "HIV" | "MAL" | "TB"; // Changed from "Malaria" to "MAL" for consistency with activity codes
 type FacilityType = "hospital" | "health_center";
@@ -504,107 +505,15 @@ export function useExecutionForm({
       });
     }
     
-    // Get all expense codes from the template/schema
-    const expenseCodes: string[] = [];
-    const sectionB = (hierarchicalData as any).B;
-    if (sectionB?.subCategories) {
-      Object.values(sectionB.subCategories).forEach((subCat: any) => {
-        if (subCat.items) {
-          subCat.items.forEach((item: any) => {
-            if (item.code && !item.isTotalRow && !item.isComputed) {
-              expenseCodes.push(item.code);
-            }
-          });
-        }
-      });
-    }
+    // Generate expense-to-payable mapping using database-driven approach
+    // This replaces the old hardcoded pattern matching logic
+    const expenseToPayableMap = generateExpenseToPayableMapping(hierarchicalData);
     
-    // Build expense-to-payable mapping based on naming patterns
-    // This maps expenses to their corresponding payables
-    const expenseToPayableMap: Record<string, string> = {};
-    
-    expenseCodes.forEach(expenseCode => {
-      // Find the expense name from activities (already have hierarchicalData and sectionB)
-      let expenseName = '';
-      
-      // Search through B subcategories to find the expense
-      if (sectionB?.subCategories) {
-        Object.values(sectionB.subCategories).forEach((subCat: any) => {
-          const found = subCat.items?.find((item: any) => item.code === expenseCode);
-          if (found) expenseName = found.name.toLowerCase();
-        });
-      }
-      
-      // Map expense to payable based on name patterns
-      // B-01 (HR) → E_1 (Salaries payable)
-      // B-02 (M&E) → E_2 (Supervision), E_3 (Meetings)
-      // B-03 (Service delivery) → E_8, E_9, E_10, E_11
-      // B-04 (Overheads) → E_12, E_13, E_14, E_15
-      
-      if (expenseName.includes('laboratory') || expenseName.includes('nurse') || expenseName.includes('doctor') || expenseName.includes('technician') || expenseName.includes('accountant') || expenseName.includes('pharmacist') || expenseName.includes('salary') || expenseName.includes('coordinator') || expenseName.includes('staff') || expenseName.includes('chw supervisor')) {
-        // B-01: HR expenses → Payable 1: Salaries (E_1)
-        const payableCode = payableCodes.find(code => code.includes('_E_1'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('support group meeting')) {
-        // B-02: Support group meetings → Payable 2 (E_2)
-        const payableCode = payableCodes.find(code => code.includes('_E_2'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('census training')) {
-        // B-02: Census training → Payable 3 (E_3)
-        const payableCode = payableCodes.find(code => code.includes('_E_3'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('clinical mentorship') || expenseName.includes('mentorship')) {
-        // B-02: Clinical mentorship → Payable 4 (E_4)
-        const payableCode = payableCodes.find(code => code.includes('_E_4'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('annual') && expenseName.includes('meeting')) {
-        // B-02: Annual coordination meeting → Payable 5 (E_5)
-        const payableCode = payableCodes.find(code => code.includes('_E_5'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('mdt meeting') || expenseName.includes('quarterly') && expenseName.includes('meeting')) {
-        // B-02: MDT meetings → Payable 6 (E_6)
-        const payableCode = payableCodes.find(code => code.includes('_E_6'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('supervision') && expenseName.includes('dqa')) {
-        // B-02: Supervision and DQA → Payable 7 (E_7)
-        const payableCode = payableCodes.find(code => code.includes('_E_7'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('sample transport')) {
-        // B-03: Sample transport → Payable 8 (E_8)
-        const payableCode = payableCodes.find(code => code.includes('_E_8'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('home visit')) {
-        // B-03: Home visits → Payable 9 (E_9)
-        const payableCode = payableCodes.find(code => code.includes('_E_9'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('outreach') && expenseName.includes('hiv')) {
-        // B-03: Outreach for HIV testing → Payable 10 (E_10)
-        const payableCode = payableCodes.find(code => code.includes('_E_10'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('wad') || expenseName.includes('celebration')) {
-        // B-03: WAD celebration → Payable 11 (E_11)
-        const payableCode = payableCodes.find(code => code.includes('_E_11'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('communication') && expenseName.includes('all')) {
-        // B-04: Communication - All → Payable 12 (E_12)
-        const payableCode = payableCodes.find(code => code.includes('_E_12'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('maintenance')) {
-        // B-04: Maintenance → Payable 13 (E_13)
-        const payableCode = payableCodes.find(code => code.includes('_E_13'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName === 'fuel' || (expenseName.includes('fuel') && !expenseName.includes('refund'))) {
-        // B-04: Fuel → Payable 14 (E_14)
-        const payableCode = payableCodes.find(code => code.includes('_E_14'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('office supplies') || (expenseName.includes('supplies') && !expenseName.includes('consumable'))) {
-        // B-04: Office supplies → Payable 15 (E_15)
-        const payableCode = payableCodes.find(code => code.includes('_E_15'));
-        if (payableCode) expenseToPayableMap[expenseCode] = payableCode;
-      } else if (expenseName.includes('bank charges')) {
-        // Bank charges - no payable (paid immediately)
-        // Skip bank charges
-      }
+    console.log('🗺️ [Expense-to-Payable Mapping]:', {
+      totalMappings: Object.keys(expenseToPayableMap).length,
+      sampleMappings: Object.entries(expenseToPayableMap).slice(0, 5),
+      projectType,
+      facilityType
     });
     
     // Get opening balances for payables from previous quarter
@@ -632,9 +541,14 @@ export function useExecutionForm({
     // Calculate payables for each payable code
     const calculatedPayables: Record<string, number> = {};
     
+    // Find Other Payables code to skip (it's calculated from Section X, not Section B)
+    const otherPayablesCodeToSkip = sectionE?.items?.find((item: any) => 
+      item.name?.toLowerCase().includes('other payable')
+    )?.code;
+    
     payableCodes.forEach(payableCode => {
-      // SKIP Payable 16 (Other Payables) - it's calculated from Section X, not Section B
-      if (payableCode.includes('_E_16')) {
+      // SKIP Other Payables - it's calculated from Section X, not Section B
+      if (otherPayablesCodeToSkip && payableCode === otherPayablesCodeToSkip) {
         console.log(`  Payable ${payableCode}: SKIPPED (calculated from Section X)`);
         return; // Skip this payable
       }
@@ -774,6 +688,8 @@ export function useExecutionForm({
           item.code.includes('VAT_MAINTENANCE') || 
           item.code.includes('VAT_FUEL') || 
           item.code.includes('VAT_SUPPLIES') ||
+          item.code.includes('VAT_CAR_HIRING') ||
+          item.code.includes('VAT_CONSUMABLES') ||
           // Also check for item names to catch any format variations
           item.name?.toLowerCase().includes('vat receivable')
         )) {
@@ -812,7 +728,9 @@ export function useExecutionForm({
       communication_all: vatReceivableCodes.find(code => code.includes('COMMUNICATION_ALL') || code.includes('D-01_1')),
       maintenance: vatReceivableCodes.find(code => code.includes('MAINTENANCE') || code.includes('D-01_2')),
       fuel: vatReceivableCodes.find(code => code.includes('FUEL') || code.includes('D-01_3')),
-      office_supplies: vatReceivableCodes.find(code => code.includes('SUPPLIES') || code.includes('D-01_4'))
+      office_supplies: vatReceivableCodes.find(code => code.includes('SUPPLIES') || code.includes('D-01_4')),
+      car_hiring: vatReceivableCodes.find(code => code.includes('CAR_HIRING') || code.includes('D-01_5')),
+      consumables: vatReceivableCodes.find(code => code.includes('CONSUMABLES') || code.includes('D-01_6'))
     };
     
     // Initialize VAT receivables by category with opening balances from previous quarter
@@ -820,7 +738,9 @@ export function useExecutionForm({
       communication_all: 0,
       maintenance: 0,
       fuel: 0,
-      office_supplies: 0
+      office_supplies: 0,
+      car_hiring: 0,
+      consumables: 0
     };
     
     if (previousQuarterBalances?.exists && previousQuarterBalances.closingBalances?.D) {
@@ -860,8 +780,13 @@ export function useExecutionForm({
           category = 'maintenance';
         } else if (expenseName === 'fuel' || (expenseName.includes('fuel') && !expenseName.includes('refund'))) {
           category = 'fuel';
+        } else if (expenseName.includes('consumable')) {
+          // Check for consumable BEFORE office supplies (consumable name contains "supplies")
+          category = 'consumables';
         } else if (expenseName.includes('office supplies') || expenseName.includes('supplies')) {
           category = 'office_supplies';
+        } else if (expenseName.includes('car') && expenseName.includes('hiring')) {
+          category = 'car_hiring';
         }
         
         if (category) {
@@ -968,9 +893,32 @@ export function useExecutionForm({
     
     // Find Other Receivables code
     const xCodes = Object.keys(formData).filter(k => k.includes('_X_'));
-    const otherReceivablesCode = Object.keys(formData).find(c => 
-      c.includes('_D_') && (c.includes('D-01_5') || c.includes('_D_D-01_5'))
-    );
+    const otherReceivablesCode = Object.keys(formData).find(c => {
+      // Find by checking if it's in Section D and contains "Other" in the activity name
+      if (!c.includes('_D_')) return false;
+      
+      // Check in hierarchical data for the activity name
+      if (activitiesQuery.data) {
+        const hierarchicalData = activitiesQuery.data as any;
+        const sectionD = hierarchicalData?.D;
+        if (sectionD?.children) {
+          // Search through all D section items (including subcategories)
+          for (const child of sectionD.children) {
+            if (child.isSubcategory && child.children) {
+              // Search in subcategory children
+              const found = child.children.find((item: any) => 
+                item.code === c && item.name?.toLowerCase().includes('other receivable')
+              );
+              if (found) return true;
+            } else if (child.code === c && child.name?.toLowerCase().includes('other receivable')) {
+              return true;
+            }
+          }
+        }
+      }
+      
+      return false;
+    });
     
     // Initialize Other Receivables with opening balance if it's 0
     if (otherReceivablesCode && previousQuarterBalances.closingBalances?.D) {
@@ -1023,33 +971,58 @@ export function useExecutionForm({
     const otherReceivableXCode = xCodes.find(c => c.includes('_X_1'));
     const otherPayablesXCode = xCodes.find(c => c.includes('_X_2'));
     
-    // Find Other Receivables in D section and Payable 16 in E section
-    const otherReceivablesCode = Object.keys(formData).find(c => 
-      c.includes('_D_') && (c.includes('D-01_5') || c.includes('_D_D-01_5'))
-    );
+    // Find Other Receivables in D section by name (works for all programs)
+    const otherReceivablesCode = Object.keys(formData).find(c => {
+      // Find by checking if it's in Section D and contains "Other" in the activity name
+      if (!c.includes('_D_')) return false;
+      
+      // Check in hierarchical data for the activity name
+      if (activitiesQuery.data) {
+        const hierarchicalData = activitiesQuery.data as any;
+        const sectionD = hierarchicalData?.D;
+        if (sectionD?.children) {
+          // Search through all D section items (including subcategories)
+          for (const child of sectionD.children) {
+            if (child.isSubcategory && child.children) {
+              // Search in subcategory children
+              const found = child.children.find((item: any) => 
+                item.code === c && item.name?.toLowerCase().includes('other receivable')
+              );
+              if (found) return true;
+            } else if (child.code === c && child.name?.toLowerCase().includes('other receivable')) {
+              return true;
+            }
+          }
+        }
+      }
+      
+      return false;
+    });
     
-    // Find Payable 16 code - first try formData, then hierarchical data
-    let otherPayablesCode = eCodes.find(c => c.includes('_E_16'));
+    // Find Other Payables code by name (works for all programs: HIV E_16, Malaria E_11, TB E_9)
+    let otherPayablesCode: string | undefined;
     
-    // If not in formData, search in hierarchical data (for computed activities)
-    if (!otherPayablesCode && activitiesQuery.data) {
+    // Search in hierarchical data for Other Payables activity
+    if (activitiesQuery.data) {
       const hierarchicalData = activitiesQuery.data as any;
       const sectionE = hierarchicalData?.E;
       if (sectionE?.items) {
-        // Try multiple matching strategies for robustness
+        // Find by name pattern (most reliable across programs)
         const found = sectionE.items.find((item: any) => 
-          item.code?.includes('_E_16') || 
-          item.code?.endsWith('_E_16') ||
-          item.name?.toLowerCase().includes('payable 16') ||
-          (item.name?.toLowerCase().includes('other payable') && item.displayOrder === 16)
+          item.name?.toLowerCase().includes('other payable')
         );
+        
         if (found) {
           otherPayablesCode = found.code;
-          console.log('🔍 [X->D/E Calculation] Found Payable 16 in hierarchical data:', otherPayablesCode);
+          console.log('🔍 [X->D/E Calculation] Found Other Payables:', {
+            code: otherPayablesCode,
+            name: found.name,
+            displayOrder: found.displayOrder
+          });
           
           // Initialize in formData if not present (critical for computed activities)
           if (!(otherPayablesCode in formData)) {
-            console.log('🔧 [X->D/E Calculation] Initializing Payable 16 in formData');
+            console.log('🔧 [X->D/E Calculation] Initializing Other Payables in formData');
             setFormData(prev => ({
               ...prev,
               [otherPayablesCode!]: {
@@ -1079,7 +1052,7 @@ export function useExecutionForm({
       // Additional debug info
       allECodes: eCodes,
       allXCodes: xCodes,
-      payable16InFormData: otherPayablesCode ? (otherPayablesCode in formData) : false,
+      otherPayablesInFormData: otherPayablesCode ? (otherPayablesCode in formData) : false,
       sectionEItemsCount: activitiesQuery.data ? ((activitiesQuery.data as any)?.E?.items?.length || 0) : 0,
       // Other Receivables debug
       otherReceivablesInFormData: otherReceivablesCode ? (otherReceivablesCode in formData) : false,
@@ -1087,7 +1060,7 @@ export function useExecutionForm({
       previousQuarterOtherReceivables: previousQuarterBalances?.closingBalances?.D?.[otherReceivablesCode || ''] || 0
     });
     
-    // Calculate Other Payables (E_16) from X section Other Payables (X_2)
+    // Calculate Other Payables from X section Other Payables (X_2)
     if (otherPayablesCode && otherPayablesXCode) {
       const otherPayablesXValue = Number(formData[otherPayablesXCode]?.[quarterKey]) || 0;
       const currentPayable16Value = Number(formData[otherPayablesCode]?.[quarterKey]) || 0;

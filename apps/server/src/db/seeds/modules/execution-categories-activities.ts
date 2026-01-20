@@ -24,7 +24,7 @@ interface ActivityData {
     isTotalRow: boolean;
     activityType?: string;
     payableName?: string; // NEW: Name of payable this expense maps to (for expense-to-payable mapping)
-    vatCategory?: 'COMMUNICATION_ALL' | 'MAINTENANCE' | 'SUPPLIES' | 'FUEL'; // VAT category for VAT-applicable expenses
+    vatCategory?: 'COMMUNICATION_ALL' | 'MAINTENANCE' | 'SUPPLIES' | 'FUEL' | 'CAR_HIRING' | 'CONSUMABLES';
     computationRules?: any;
     applicableTo: 'hospital' | 'health_center' | 'both'; // NEW: Facility targeting
 }
@@ -37,6 +37,13 @@ const subCategoryLabels: Record<string, string> = {
     'B-05': 'Transfer to other reporting entities',
     'D-01': 'Receivables',
     'G-01': 'Prior Year Adjustments',
+};
+
+// VAT categories by program type
+const vatCategoriesByProgram: Record<'HIV' | 'MAL' | 'TB', string[]> = {
+    'HIV': ['COMMUNICATION_ALL', 'MAINTENANCE', 'FUEL', 'SUPPLIES'],
+    'MAL': ['COMMUNICATION_ALL', 'MAINTENANCE', 'FUEL', 'SUPPLIES', 'CAR_HIRING', 'CONSUMABLES'],
+    'TB': ['COMMUNICATION_ALL', 'MAINTENANCE', 'FUEL', 'SUPPLIES'],
 };
 
 
@@ -159,23 +166,23 @@ const malariaActivities: ActivityData[] = [
     // B. Expenditures - Strengthening Malaria surveillance monitoring and evaluation
     { categoryCode: 'B', subCategoryCode: 'B-02', name: 'Supervision CHWs in villages by HC', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 2: Supervision', applicableTo: 'both' },
     { categoryCode: 'B', subCategoryCode: 'B-02', name: 'Cordination meeting on data quality', displayOrder: 2, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 3: Cordination meetings', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-02', name: 'Transport and travel (reporting, banking, collectors, supervisor & tender budget)', displayOrder: 3, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 4: Transport & travel', applicableTo: 'both' },
 
     // B. Expenditures - Overheads & Entomological Surveillance & insecticide resistance monitoring
 
     // VAT-based expenses
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Communication - All', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 12: Communication - All', vatCategory: 'COMMUNICATION_ALL', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Maintenance for vehicles, ICT, and medical equipments', displayOrder: 2, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 13: Maintenance', vatCategory: 'MAINTENANCE', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Fuel', displayOrder: 3, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 14: Fuel', vatCategory: 'FUEL', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Office supplies', displayOrder: 4, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 15: Office supplies', vatCategory: 'SUPPLIES', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Communication - All', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 5: Communication - All', vatCategory: 'COMMUNICATION_ALL', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Maintenance for vehicles, ICT, and medical equipments', displayOrder: 2, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 6: Maintenance', vatCategory: 'MAINTENANCE', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Fuel', displayOrder: 3, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 7: Fuel', vatCategory: 'FUEL', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Office supplies', displayOrder: 4, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 8: Office supplies', vatCategory: 'SUPPLIES', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Car Hiring on entomological surviellance', displayOrder: 5, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 9: Car Hiring', vatCategory: 'CAR_HIRING', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Consumable (supplies, stationaries, & human landing)', displayOrder: 6, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 10: Consumable', vatCategory: 'CONSUMABLES', applicableTo: 'both' },
 
     // Non-VAT expenses
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Car Hiring on entomological surviellance', displayOrder: 5, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 4: Car Hiring', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Consumable (supplies, stationaries, & human landing)', displayOrder: 6, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 5: Consumable', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Transport and travel (reporting, banking, collectors, supervisor & tender budget)', displayOrder: 7, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 6: Transport & travel', applicableTo: 'both' },
     { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Bank charges', displayOrder: 8, isTotalRow: false, activityType: 'EXPENSE', applicableTo: 'both' },
 
     // B. Expenditures - Transfer to other entities (both)
-    { categoryCode: 'B', subCategoryCode: 'B-05', name: 'Transfer to RBC (VAT Refund & Cash balances', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-05', name: 'Transfer to RBC (VAT Refund & Cash balances)', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', applicableTo: 'both' },
 
     // B. Expenditures Total (both)
     { categoryCode: 'B', subCategoryCode: null, name: 'B. Expenditures', displayOrder: 99, isTotalRow: true, activityType: 'EXPENSE_TOTAL', applicableTo: 'both' },
@@ -192,7 +199,9 @@ const malariaActivities: ActivityData[] = [
     { categoryCode: 'D', subCategoryCode: 'D-01', name: 'VAT Receivable 2: Maintenance', displayOrder: 2, isTotalRow: false, activityType: 'VAT_RECEIVABLE', vatCategory: 'MAINTENANCE', applicableTo: 'both' },
     { categoryCode: 'D', subCategoryCode: 'D-01', name: 'VAT Receivable 3: Fuel', displayOrder: 3, isTotalRow: false, activityType: 'VAT_RECEIVABLE', vatCategory: 'FUEL', applicableTo: 'both' },
     { categoryCode: 'D', subCategoryCode: 'D-01', name: 'VAT Receivable 4: Office supplies', displayOrder: 4, isTotalRow: false, activityType: 'VAT_RECEIVABLE', vatCategory: 'SUPPLIES', applicableTo: 'both' },
-    { categoryCode: 'D', subCategoryCode: 'D-01', name: 'Other Receivables', displayOrder: 5, isTotalRow: false, activityType: 'COMPUTED_ASSET', computationRules: { formula: 'X_OTHER_RECEIVABLE', description: 'Automatically calculated from Miscellaneous Adjustments' }, applicableTo: 'both' },
+    { categoryCode: 'D', subCategoryCode: 'D-01', name: 'VAT Receivable 5: Car hiring', displayOrder: 5, isTotalRow: false, activityType: 'VAT_RECEIVABLE', vatCategory: 'CAR_HIRING', applicableTo: 'both' },
+    { categoryCode: 'D', subCategoryCode: 'D-01', name: 'VAT Receivable 6: Consumables', displayOrder: 6, isTotalRow: false, activityType: 'VAT_RECEIVABLE', vatCategory: 'CONSUMABLES', applicableTo: 'both' },
+    { categoryCode: 'D', subCategoryCode: 'D-01', name: 'Other Receivables', displayOrder: 7, isTotalRow: false, activityType: 'COMPUTED_ASSET', computationRules: { formula: 'X_OTHER_RECEIVABLE', description: 'Automatically calculated from Miscellaneous Adjustments' }, applicableTo: 'both' },
 
     { categoryCode: 'D', subCategoryCode: null, name: 'D. Financial Assets', displayOrder: 9, isTotalRow: true, activityType: 'ASSET_TOTAL', applicableTo: 'both' },
 
@@ -200,14 +209,14 @@ const malariaActivities: ActivityData[] = [
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 1: Salaries', displayOrder: 1, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 2: Supervision', displayOrder: 2, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 3: Cordination meetings', displayOrder: 3, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 4: Car Hiring', displayOrder: 4, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 5: Consumable', displayOrder: 5, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 6: Transport & travel', displayOrder: 6, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 12: Communication - All', displayOrder: 12, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 13: Maintenance', displayOrder: 13, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 14: Fuel', displayOrder: 14, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 15: Office supplies', displayOrder: 15, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 16: Other payables', displayOrder: 16, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 4: Transport & travel', displayOrder: 4, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 5: Communication - All', displayOrder: 5, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 6: Maintenance', displayOrder: 6, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 7: Fuel', displayOrder: 7, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 8: Office supplies', displayOrder: 8, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 9: Car Hiring', displayOrder: 9, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 10: Consumable', displayOrder: 10, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 11: Other payables', displayOrder: 11, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'E. Financial Liabilities', displayOrder: 17, isTotalRow: true, activityType: 'LIABILITY_TOTAL', applicableTo: 'both' },
 
     // F. Net Financial Assets (computed for both)
@@ -236,21 +245,20 @@ const tbActivities: ActivityData[] = [
     { categoryCode: 'B', subCategoryCode: 'B-01', name: 'MDR TB staff salary', displayOrder: 2, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 1: Salaries', applicableTo: 'both' },
 
     // B. Expenditures - Monitoring & Evaluation 
-    { categoryCode: 'B', subCategoryCode: 'B-02', name: 'Mission fees for tracing, TPT, HCW, outreach, & meeting ', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 2: mission', applicableTo: 'both' },
-
+    { categoryCode: 'B', subCategoryCode: 'B-02', name: 'Mission fees for tracing, TPT, HCW, outreach, & meeting ', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 2: Mission', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-02', name: 'Transport and travel (Reporting)', displayOrder: 2, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 3: Transport for reporting', applicableTo: 'both' },
 
     // B. Expenditures - Overheads
 
     // VAT-based expenses
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Communication - All', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 12: Communication - All', vatCategory: 'COMMUNICATION_ALL', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Maintenance for vehicles, ICT, and medical equipments', displayOrder: 2, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 13: Maintenance', vatCategory: 'MAINTENANCE', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Fuel', displayOrder: 3, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 14: Fuel', vatCategory: 'FUEL', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Office supplies', displayOrder: 4, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 15: Office supplies', vatCategory: 'SUPPLIES', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Communication - All', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 4: Communication - All', vatCategory: 'COMMUNICATION_ALL', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Maintenance for vehicles, ICT, and medical equipments', displayOrder: 2, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 5: Maintenance', vatCategory: 'MAINTENANCE', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Fuel', displayOrder: 3, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 6: Fuel', vatCategory: 'FUEL', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Office supplies', displayOrder: 4, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 7: Office supplies', vatCategory: 'SUPPLIES', applicableTo: 'both' },
 
     // Non-VAT expenses
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Car hiring & transport for hiring', displayOrder: 5, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 3: Car hiring', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Transport and travel (Reporting)', displayOrder: 6, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 4: Transport for reporting', applicableTo: 'both' },
-    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Bank charges', displayOrder: 7, isTotalRow: false, activityType: 'EXPENSE', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Car hiring & transport for hiring', displayOrder: 5, isTotalRow: false, activityType: 'EXPENSE', payableName: 'Payable 8: Car hiring', applicableTo: 'both' },
+    { categoryCode: 'B', subCategoryCode: 'B-04', name: 'Bank charges', displayOrder: 6, isTotalRow: false, activityType: 'EXPENSE', applicableTo: 'both' },
 
     // B. Expenditures - Transfer to other entities (both)
     { categoryCode: 'B', subCategoryCode: 'B-05', name: 'Transfer to RBC', displayOrder: 1, isTotalRow: false, activityType: 'EXPENSE', applicableTo: 'both' },
@@ -277,14 +285,14 @@ const tbActivities: ActivityData[] = [
     // E. Financial Liabilities 
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 1: Salaries', displayOrder: 1, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 2: Mission', displayOrder: 2, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 3: Car hiring', displayOrder: 3, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 4: Transport for reporting', displayOrder: 4, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 12: Communication - All', displayOrder: 12, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 13: Maintenance', displayOrder: 13, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 14: Fuel', displayOrder: 14, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 15: Office supplies', displayOrder: 15, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 16: Other payables', displayOrder: 16, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'E. Financial Liabilities', displayOrder: 17, isTotalRow: true, activityType: 'LIABILITY_TOTAL', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 3: Transport for reporting', displayOrder: 3, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 4: Communication - All', displayOrder: 4, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 5: Maintenance', displayOrder: 5, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 6: Fuel', displayOrder: 6, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 7: Office supplies', displayOrder: 7, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 8: Car hiring', displayOrder: 8, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 9: Other payables', displayOrder: 9, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'E. Financial Liabilities', displayOrder: 10, isTotalRow: true, activityType: 'LIABILITY_TOTAL', applicableTo: 'both' },
 
     // F. Net Financial Assets (computed for both)
     { categoryCode: 'F', subCategoryCode: null, name: 'F. Net Financial Assets', displayOrder: 1, isTotalRow: true, activityType: 'COMPUTED', computationRules: { formula: 'D - E', description: 'Financial Assets minus Financial Liabilities' }, applicableTo: 'both' },
@@ -528,7 +536,8 @@ async function verifyVATReceivables(db: Database, projectType: 'HIV' | 'MAL' | '
 
     const dbProjectType = toDbProjectType(projectType);
     const facilityTypes: Array<'hospital' | 'health_center'> = ['hospital', 'health_center'];
-    const vatCategories = ['COMMUNICATION_ALL', 'MAINTENANCE', 'FUEL', 'SUPPLIES'];
+    // Get VAT categories specific to this program
+    const vatCategories = vatCategoriesByProgram[projectType];
 
     for (const facilityType of facilityTypes) {
         console.log(`\n  🏥 ${facilityType.toUpperCase()}`);
@@ -547,6 +556,7 @@ async function verifyVATReceivables(db: Database, projectType: 'HIV' | 'MAL' | '
             );
 
         console.log(`     Found ${vatReceivables.length} VAT receivable activities`);
+        console.log(`     Expected ${vatCategories.length} VAT categories for ${projectType}`);
 
         // Check each VAT category
         for (const category of vatCategories) {
@@ -585,6 +595,41 @@ async function verifyVATReceivables(db: Database, projectType: 'HIV' | 'MAL' | '
             const metadata = e.metadata as any;
             console.log(`       - ${e.name} (${metadata.vatCategory})`);
         });
+
+        // Verify each expense has a corresponding payable
+        console.log(`\n     Verifying expense-to-payable mappings:`);
+        const allExpenses = await db
+            .select()
+            .from(schema.dynamicActivities)
+            .where(
+                and(
+                    eq(schema.dynamicActivities.projectType, dbProjectType as any),
+                    eq(schema.dynamicActivities.facilityType, facilityType),
+                    eq(schema.dynamicActivities.moduleType, 'execution'),
+                    eq(schema.dynamicActivities.activityType, 'EXPENSE'),
+                    eq(schema.dynamicActivities.isTotalRow, false)
+                )
+            );
+
+        const expensesWithPayableMapping = allExpenses.filter(e => {
+            const metadata = e.metadata as any;
+            return metadata && metadata.payableActivityId;
+        });
+
+        const expensesExpectingPayable = allExpenses.filter(e => {
+            const metadata = e.metadata as any;
+            return metadata && metadata.payableName;
+        });
+
+        if (expensesExpectingPayable.length > expensesWithPayableMapping.length) {
+            const unmapped = expensesExpectingPayable.length - expensesWithPayableMapping.length;
+            console.log(`     ⚠️  Found ${unmapped} expenses expecting payable but not yet mapped`);
+            console.log(`     ℹ️  Run the payable mapping script to establish mappings`);
+        } else if (expensesExpectingPayable.length > 0) {
+            console.log(`     ✅ All ${expensesExpectingPayable.length} expenses have payable mappings`);
+        } else {
+            console.log(`     ℹ️  No expenses with payable mappings in this program`);
+        }
     }
 }
 
@@ -599,7 +644,8 @@ export async function seedExecutionActivitiesForProgramInternal(
         displayOrder: number;
         isTotalRow: boolean;
         activityType?: string;
-        vatCategory?: 'COMMUNICATION_ALL' | 'MAINTENANCE' | 'SUPPLIES' | 'FUEL';
+        payableName?: string; // Name of payable this expense maps to
+        vatCategory?: 'COMMUNICATION_ALL' | 'MAINTENANCE' | 'SUPPLIES' | 'FUEL' | 'CAR_HIRING' | 'CONSUMABLES';
         computationRules?: any;
         applicableTo: 'hospital' | 'health_center' | 'both';
     }>
@@ -729,7 +775,9 @@ export async function seedExecutionActivitiesForProgramInternal(
                     enhancedSeed: true,
                     createdAt: new Date().toISOString(),
                     // Store vatCategory in metadata for VAT-applicable expenses
-                    ...(activity.vatCategory && { vatCategory: activity.vatCategory })
+                    ...(activity.vatCategory && { vatCategory: activity.vatCategory }),
+                    // CRITICAL: Store payableName in metadata for expense-to-payable mapping
+                    ...(activity.payableName && { payableName: activity.payableName })
                 },
                 isActive: true
             };
