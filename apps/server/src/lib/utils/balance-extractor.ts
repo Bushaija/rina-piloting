@@ -166,6 +166,7 @@ export function extractClosingBalances(
         
         // Check if this is the G. Closing Balance total row (ends with _G_5)
         // Activity code pattern: {PROJECT}_EXEC_{FACILITY}_G_5
+        // currently, other payable is increasing cash as expected however increase other receivable in section D instead of other payables in section E
         // Note: _G_4 is "Surplus/Deficit of the Period", not the closing balance total
         if (code.includes("_G_5")) {
           closingBalanceTotal = closingBalance;

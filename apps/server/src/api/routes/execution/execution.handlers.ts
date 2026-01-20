@@ -2593,6 +2593,17 @@ export const getActivities: AppRouteHandler<GetActivitiesRoute> = async (c) => {
           if (!activity.isTotalRow) {
             structure.E.items.push(activityItem);
           }
+          // DEBUG: Log Payable 16 specifically
+          if (activity.name.toLowerCase().includes('payable 16') || activity.name.toLowerCase().includes('other payable')) {
+            console.log('🔍 [E Section] Found Payable 16/Other payables:', {
+              name: activity.name,
+              code: activity.code,
+              activityType: activity.activityType,
+              isTotalRow: activity.isTotalRow,
+              fieldMappings: activity.fieldMappings,
+              addedToItems: !activity.isTotalRow
+            });
+          }
           break;
         case 'G':
           const gSubcategory = fieldMappings?.subcategory;
@@ -2662,6 +2673,14 @@ export const getActivities: AppRouteHandler<GetActivitiesRoute> = async (c) => {
     //     })) : []
     //   }
     // });
+
+    // DEBUG: Log E section items to verify Payable 16 is included
+    console.log('🔍 [E Section Summary]:', {
+      projectType: finalProjectType,
+      facilityType: finalFacilityType,
+      itemCount: structure.E.items.length,
+      items: structure.E.items.map((i: any) => ({ name: i.name, code: i.code, activityType: i.activityType }))
+    });
 
     return c.json({
       data: structure,

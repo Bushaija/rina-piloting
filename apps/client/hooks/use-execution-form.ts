@@ -165,7 +165,9 @@ export function useExecutionForm({
         console.log(`  📄 Processing ${categoryData.items.length} direct items for ${categoryCode}`);
         categoryData.items.forEach((item: any) => {
           console.log(`    - ${item.name} (code: ${item.code}, isTotalRow: ${item.isTotalRow}, isComputed: ${item.isComputed})`);
-          if (!item.isTotalRow && !item.isComputed) {
+          // Include Payable 16 (E_16) even if marked as computed - it needs payable clearance support
+          const isPayable16 = item.code?.includes('_E_16') || item.name?.toLowerCase().includes('payable 16');
+          if (!item.isTotalRow && (!item.isComputed || isPayable16)) {
             editableActivities.push(item);
             console.log(`      ✅ Added to editableActivities`);
           } else {
@@ -346,11 +348,37 @@ export function useExecutionForm({
       return sum;
     }, 0);
 
-    // Calculate total miscellaneous adjustments from Section X (reduces cash)
+    // Calculate total miscellaneous adjustments from Section X
+    // "Other Receivable" (X_1) DECREASES cash (you're giving credit to someone)
+    // "Other Payables" (X_2) INCREASES cash (you're receiving money that you owe)
     const miscAdjustmentCodes = Object.keys(formData).filter(code => code.includes('_X_'));
-    const totalMiscAdjustments = miscAdjustmentCodes.reduce((sum, code) => {
-      return sum + (Number(formData[code]?.[quarterKey]) || 0);
-    }, 0);
+    
+    let otherReceivableAmount = 0; // Decreases cash
+    let otherPayablesAmount = 0;   // Increases cash
+    
+    miscAdjustmentCodes.forEach(code => {
+      const value = Number(formData[code]?.[quarterKey]) || 0;
+      // X_1 or displayOrder 1 = Other Receivable (decreases cash)
+      // X_2 or displayOrder 2 = Other Payables (increases cash)
+      if (code.includes('_X_1') || code.includes('_X_X_1')) {
+        otherReceivableAmount += value;
+      } else if (code.includes('_X_2') || code.includes('_X_X_2')) {
+        otherPayablesAmount += value;
+      } else {
+        // Check by activity name from the template
+        const sectionX = (hierarchicalData as any).X;
+        if (sectionX?.items) {
+          const activity = sectionX.items.find((item: any) => item.code === code);
+          if (activity?.name?.toLowerCase().includes('other payable')) {
+            otherPayablesAmount += value;
+          } else {
+            otherReceivableAmount += value;
+          }
+        } else {
+          otherReceivableAmount += value;
+        }
+      }
+    });
 
     // Calculate total VAT cleared (increases cash when VAT refunds are received)
     const totalVATCleared = expenseCodes.reduce((sum, code) => {
@@ -404,8 +432,9 @@ export function useExecutionForm({
 
     // Calculate Cash at Bank as CUMULATIVE:
     // Current Quarter Cash = Previous Quarter Cash + Current Quarter Receipts - Current Quarter Paid Expenses 
-    //                        - Misc Adjustments + VAT Cleared - Payables Cleared + Other Receivables Cleared + Prior Year Cash Adjustments
-    const calculatedCashAtBank = previousQuarterCash + totalReceipts - totalPaidExpenses - totalMiscAdjustments + totalVATCleared - totalPayablesCleared + totalOtherReceivablesCleared + totalPriorYearCashAdjustments;
+    //                        - Other Receivable (from X) + Other Payables (from X) + VAT Cleared - Payables Cleared + Other Receivables Cleared + Prior Year Cash Adjustments
+    // Note: Other Receivable DECREASES cash (you're giving credit), Other Payables INCREASES cash (you're receiving money)
+    const calculatedCashAtBank = previousQuarterCash + totalReceipts - totalPaidExpenses - otherReceivableAmount + otherPayablesAmount + totalVATCleared - totalPayablesCleared + totalOtherReceivablesCleared + totalPriorYearCashAdjustments;
 
     console.log('💰 [Cash at Bank Calculation]:', {
       quarter,
@@ -414,13 +443,14 @@ export function useExecutionForm({
       previousQuarterCash,
       totalReceipts,
       totalPaidExpenses,
-      totalMiscAdjustments,
+      otherReceivableAmount,
+      otherPayablesAmount,
       totalVATCleared,
       totalPayablesCleared,
       totalOtherReceivablesCleared,
       priorYearCashCode,
       totalPriorYearCashAdjustments,
-      calculation: `${previousQuarterCash} + ${totalReceipts} - ${totalPaidExpenses} - ${totalMiscAdjustments} + ${totalVATCleared} - ${totalPayablesCleared} + ${totalOtherReceivablesCleared} + ${totalPriorYearCashAdjustments}`,
+      calculation: `${previousQuarterCash} + ${totalReceipts} - ${totalPaidExpenses} - ${otherReceivableAmount} + ${otherPayablesAmount} + ${totalVATCleared} - ${totalPayablesCleared} + ${totalOtherReceivablesCleared} + ${totalPriorYearCashAdjustments}`,
       calculatedCashAtBank,
       currentValue: formData[cashAtBankCode]?.[quarterKey]
     });
@@ -602,6 +632,12 @@ export function useExecutionForm({
     const calculatedPayables: Record<string, number> = {};
     
     payableCodes.forEach(payableCode => {
+      // SKIP Payable 16 (Other Payables) - it's calculated from Section X, not Section B
+      if (payableCode.includes('_E_16')) {
+        console.log(`  Payable ${payableCode}: SKIPPED (calculated from Section X)`);
+        return; // Skip this payable
+      }
+      
       // Start with opening balance from previous quarter
       let payableAmount = 0;
       if (previousQuarterBalances?.exists && previousQuarterBalances.closingBalances?.E) {
@@ -915,101 +951,232 @@ export function useExecutionForm({
   }, [formData, quarter, previousQuarterBalances, activitiesQuery.data]);
 
   // Auto-calculate Other Receivables (Section D) from Miscellaneous Adjustments (Section X)
+  // AND Auto-calculate Other Payables (Section E) from Miscellaneous Adjustments (Section X)
+  // Use refs to track last calculated values and prevent infinite loops
+  const lastOtherReceivablesCalcRef = useRef<{ quarter: string; value: number } | null>(null);
+  const lastOtherPayablesCalcRef = useRef<{ quarter: string; value: number } | null>(null);
+  
   useEffect(() => {
-    if (!activitiesQuery.data) return;
-
-    const quarterKey = quarter.toLowerCase() as 'q1' | 'q2' | 'q3' | 'q4';
+    console.log('🔄 [X->D/E Calculation] useEffect triggered', {
+      hasActivitiesData: !!activitiesQuery.data,
+      quarter,
+      formDataKeys: Object.keys(formData).length,
+      xSectionCodes: Object.keys(formData).filter(k => k.includes('_X_')),
+      eSectionCodes: Object.keys(formData).filter(k => k.includes('_E_')).slice(0, 5),
+      allFormDataKeys: Object.keys(formData)
+    });
     
-    // Find the Other Receivables code from the template/schema (not from formData)
-    const hierarchicalData = activitiesQuery.data ?? {};
-    let otherReceivablesCode: string | undefined;
-    
-    const sectionD = (hierarchicalData as any).D;
-    if (sectionD?.subCategories?.['D-01']?.items) {
-      const found = sectionD.subCategories['D-01'].items.find((item: any) => 
-        item.code && (
-          item.code.includes('_D_4') || 
-          item.code.includes('_D_D-01_5') ||
-          item.name?.toLowerCase().includes('other receivable')
-        )
-      );
-      otherReceivablesCode = found?.code;
-    }
-    
-    if (!otherReceivablesCode) {
-      console.warn('⚠️ Other Receivables code not found in template');
+    // Early return if no activities data
+    if (!activitiesQuery.data) {
+      console.log('⚠️ [X->D/E Calculation] No activities data, skipping');
       return;
     }
     
-    // Find Section X (Miscellaneous Adjustments) codes
-    const miscAdjustmentCodes = Object.keys(formData).filter(code => code.includes('_X_'));
+    const quarterKey = quarter.toLowerCase() as 'q1' | 'q2' | 'q3' | 'q4';
     
-    // Sum up all miscellaneous adjustments for this quarter
-    const totalMiscAdjustments = miscAdjustmentCodes.reduce((sum, code) => {
-      return sum + (Number(formData[code]?.[quarterKey]) || 0);
-    }, 0);
+    // Find codes directly from formData instead of relying on hierarchical structure
+    const xCodes = Object.keys(formData).filter(k => k.includes('_X_'));
+    const eCodes = Object.keys(formData).filter(k => k.includes('_E_'));
     
-    // Get opening balance for Other Receivables from previous quarter
-    console.log('🔄 [Rollover Debug] Other Receivables:', {
-      otherReceivablesCode,
-      previousQuarterExists: previousQuarterBalances?.exists,
-      previousQuarter: previousQuarterBalances?.quarter,
-      hasClosingBalances: !!previousQuarterBalances?.closingBalances,
-      hasSectionD: !!previousQuarterBalances?.closingBalances?.D,
-      sectionDKeys: previousQuarterBalances?.closingBalances?.D ? Object.keys(previousQuarterBalances.closingBalances.D) : [],
-      lookupValue: previousQuarterBalances?.closingBalances?.D?.[otherReceivablesCode]
-    });
+    // Find Other Receivable (X_1) and Other Payables (X_2) codes
+    const otherReceivableXCode = xCodes.find(c => c.includes('_X_1'));
+    const otherPayablesXCode = xCodes.find(c => c.includes('_X_2'));
     
-    const openingBalance = previousQuarterBalances?.exists 
-      ? (previousQuarterBalances.closingBalances?.D?.[otherReceivablesCode] || 0)
-      : 0;
+    // Find Other Receivables in D section and Payable 16 in E section
+    const otherReceivablesCode = Object.keys(formData).find(c => 
+      c.includes('_D_') && (c.includes('D-01_5') || c.includes('_D_D-01_5'))
+    );
     
-    // Get prior year adjustment for this specific receivable (tracked per-item)
-    const otherReceivablesData = formData[otherReceivablesCode];
-    const priorYearAdjustment = Number(otherReceivablesData?.priorYearAdjustment?.[quarterKey]) || 0;
+    // Find Payable 16 code - first try formData, then hierarchical data
+    let otherPayablesCode = eCodes.find(c => c.includes('_E_16'));
     
-    // Get cleared amount for Other Receivables
-    const clearedAmount = Number(otherReceivablesData?.otherReceivableCleared?.[quarterKey]) || 0;
-    
-    // Other Receivables = Opening Balance + Miscellaneous Adjustments + Prior Year Adjustment - Cleared Amount
-    const calculatedOtherReceivables = openingBalance + totalMiscAdjustments + priorYearAdjustment - clearedAmount;
-    
-    console.log('📋 [Other Receivables Calculation]:', {
-      quarter,
-      otherReceivablesCode,
-      openingBalance,
-      totalMiscAdjustments,
-      priorYearAdjustment,
-      clearedAmount,
-      calculatedOtherReceivables,
-      currentValue: formData[otherReceivablesCode]?.[quarterKey]
-    });
-    
-    // Update Other Receivables if the calculated value differs
-    const currentValue = Number(formData[otherReceivablesCode]?.[quarterKey]) || 0;
-    if (Math.abs(calculatedOtherReceivables - currentValue) > 0.01) {
-      setFormData(prev => {
-        const existingData = prev[otherReceivablesCode] || {};
-        return {
-          ...prev,
-          [otherReceivablesCode]: {
-            q1: existingData.q1 ?? 0,
-            q2: existingData.q2 ?? 0,
-            q3: existingData.q3 ?? 0,
-            q4: existingData.q4 ?? 0,
-            [quarterKey]: calculatedOtherReceivables,
-            comment: existingData.comment ?? "",
-            paymentStatus: existingData.paymentStatus,
-            amountPaid: existingData.amountPaid,
-            netAmount: existingData.netAmount ?? {},
-            vatAmount: existingData.vatAmount ?? {},
-            vatCleared: existingData.vatCleared ?? {},
-            payableCleared: existingData.payableCleared ?? {},
-            otherReceivableCleared: existingData.otherReceivableCleared ?? {},
-            // Preserve priorYearAdjustment from prev state
-            priorYearAdjustment: prev[otherReceivablesCode]?.priorYearAdjustment ?? {},
+    // If not in formData, search in hierarchical data (for computed activities)
+    if (!otherPayablesCode && activitiesQuery.data) {
+      const hierarchicalData = activitiesQuery.data as any;
+      const sectionE = hierarchicalData?.E;
+      if (sectionE?.items) {
+        // Try multiple matching strategies for robustness
+        const found = sectionE.items.find((item: any) => 
+          item.code?.includes('_E_16') || 
+          item.code?.endsWith('_E_16') ||
+          item.name?.toLowerCase().includes('payable 16') ||
+          (item.name?.toLowerCase().includes('other payable') && item.displayOrder === 16)
+        );
+        if (found) {
+          otherPayablesCode = found.code;
+          console.log('🔍 [X->D/E Calculation] Found Payable 16 in hierarchical data:', otherPayablesCode);
+          
+          // Initialize in formData if not present (critical for computed activities)
+          if (!(otherPayablesCode in formData)) {
+            console.log('🔧 [X->D/E Calculation] Initializing Payable 16 in formData');
+            setFormData(prev => ({
+              ...prev,
+              [otherPayablesCode!]: {
+                q1: 0,
+                q2: 0,
+                q3: 0,
+                q4: 0,
+                comment: '',
+                payableCleared: {},
+                priorYearAdjustment: {},
+              }
+            }));
+            // Return early to let the next render cycle handle the calculation
+            return;
           }
-        };
+        }
+      }
+    }
+    
+    console.log('🔄 [X->D/E Calculation] Found codes:', {
+      otherReceivableXCode,
+      otherPayablesXCode,
+      otherReceivablesCode,
+      otherPayablesCode,
+      otherPayablesXValue: formData[otherPayablesXCode || '']?.[quarterKey],
+      otherReceivableXValue: formData[otherReceivableXCode || '']?.[quarterKey],
+      // Additional debug info
+      allECodes: eCodes,
+      allXCodes: xCodes,
+      payable16InFormData: otherPayablesCode ? (otherPayablesCode in formData) : false,
+      sectionEItemsCount: activitiesQuery.data ? ((activitiesQuery.data as any)?.E?.items?.length || 0) : 0,
+      // Other Receivables debug
+      otherReceivablesInFormData: otherReceivablesCode ? (otherReceivablesCode in formData) : false,
+      otherReceivablesCurrentValue: otherReceivablesCode ? formData[otherReceivablesCode]?.[quarterKey] : 'N/A',
+      previousQuarterOtherReceivables: previousQuarterBalances?.closingBalances?.D?.[otherReceivablesCode || ''] || 0
+    });
+    
+    // Calculate Other Payables (E_16) from X section Other Payables (X_2)
+    if (otherPayablesCode && otherPayablesXCode) {
+      const otherPayablesXValue = Number(formData[otherPayablesXCode]?.[quarterKey]) || 0;
+      const currentPayable16Value = Number(formData[otherPayablesCode]?.[quarterKey]) || 0;
+      
+      // Get opening balance from previous quarter
+      const openingBalance = previousQuarterBalances?.exists 
+        ? (previousQuarterBalances.closingBalances?.E?.[otherPayablesCode] || 0)
+        : 0;
+      
+      // Get cleared amount
+      const clearedAmount = Number(formData[otherPayablesCode]?.payableCleared?.[quarterKey]) || 0;
+      
+      // Calculate: Opening + X section value - Cleared
+      const calculatedValue = openingBalance + otherPayablesXValue - clearedAmount;
+      
+      console.log('🔄 [X->D/E Calculation] Payable 16 calculation:', {
+        quarter,
+        quarterKey,
+        otherPayablesCode,
+        otherPayablesXCode,
+        otherPayablesXValue,
+        openingBalance,
+        clearedAmount,
+        calculatedValue,
+        currentPayable16Value,
+        difference: calculatedValue - currentPayable16Value,
+        shouldUpdate: Math.abs(calculatedValue - currentPayable16Value) > 0.01,
+        payable16ExistsInFormData: otherPayablesCode in formData,
+        payable16Data: formData[otherPayablesCode]
+      });
+      
+      // Update if different
+      const lastCalc = lastOtherPayablesCalcRef.current;
+      const shouldUpdate = Math.abs(calculatedValue - currentPayable16Value) > 0.01 &&
+        !(lastCalc?.quarter === quarterKey && Math.abs(lastCalc.value - calculatedValue) < 0.01);
+      
+      if (shouldUpdate) {
+        console.log('✅ [X->D/E Calculation] Updating Payable 16 to:', calculatedValue);
+        lastOtherPayablesCalcRef.current = { quarter: quarterKey, value: calculatedValue };
+        setFormData(prev => {
+          const existingData = prev[otherPayablesCode] || {
+            q1: 0, q2: 0, q3: 0, q4: 0,
+            comment: '',
+            payableCleared: {},
+            priorYearAdjustment: {},
+          };
+          return {
+            ...prev,
+            [otherPayablesCode]: {
+              ...existingData,
+              [quarterKey]: calculatedValue,
+            }
+          };
+        });
+      } else {
+        console.log('⏭️ [X->D/E Calculation] Skipping Payable 16 update (no change or duplicate)');
+      }
+    } else {
+      console.warn('⚠️ [X->D/E Calculation] Cannot calculate Payable 16:', {
+        hasPayable16Code: !!otherPayablesCode,
+        hasOtherPayablesXCode: !!otherPayablesXCode,
+        otherPayablesCode,
+        otherPayablesXCode
+      });
+    }
+    
+    // Calculate Other Receivables (D section) from X section Other Receivable (X_1)
+    if (otherReceivablesCode && otherReceivableXCode) {
+      const otherReceivableXValue = Number(formData[otherReceivableXCode]?.[quarterKey]) || 0;
+      const currentReceivableValue = Number(formData[otherReceivablesCode]?.[quarterKey]) || 0;
+      
+      // Get opening balance from previous quarter
+      const openingBalance = previousQuarterBalances?.exists 
+        ? (previousQuarterBalances.closingBalances?.D?.[otherReceivablesCode] || 0)
+        : 0;
+      
+      // Get cleared amount
+      const clearedAmount = Number(formData[otherReceivablesCode]?.otherReceivableCleared?.[quarterKey]) || 0;
+      
+      // Calculate: Opening + X section value - Cleared
+      const calculatedValue = openingBalance + otherReceivableXValue - clearedAmount;
+      
+      console.log('🔄 [X->D/E Calculation] Other Receivables calculation:', {
+        quarter,
+        quarterKey,
+        otherReceivablesCode,
+        otherReceivableXCode,
+        otherReceivableXValue,
+        openingBalance,
+        clearedAmount,
+        calculatedValue,
+        currentReceivableValue,
+        difference: calculatedValue - currentReceivableValue,
+        shouldUpdate: Math.abs(calculatedValue - currentReceivableValue) > 0.01,
+        previousQuarterBalances: {
+          exists: previousQuarterBalances?.exists,
+          quarter: previousQuarterBalances?.quarter,
+          hasSectionD: !!previousQuarterBalances?.closingBalances?.D,
+          sectionDKeys: previousQuarterBalances?.closingBalances?.D ? Object.keys(previousQuarterBalances.closingBalances.D) : [],
+          otherReceivablesValue: previousQuarterBalances?.closingBalances?.D?.[otherReceivablesCode]
+        }
+      });
+      
+      // Update if different
+      const lastCalc = lastOtherReceivablesCalcRef.current;
+      const shouldUpdate = Math.abs(calculatedValue - currentReceivableValue) > 0.01 &&
+        !(lastCalc?.quarter === quarterKey && Math.abs(lastCalc.value - calculatedValue) < 0.01);
+      
+      if (shouldUpdate) {
+        console.log('✅ [X->D/E Calculation] Updating Other Receivables to:', calculatedValue);
+        lastOtherReceivablesCalcRef.current = { quarter: quarterKey, value: calculatedValue };
+        setFormData(prev => {
+          const existingData = prev[otherReceivablesCode] || {};
+          return {
+            ...prev,
+            [otherReceivablesCode]: {
+              ...existingData,
+              [quarterKey]: calculatedValue,
+            }
+          };
+        });
+      } else {
+        console.log('⏭️ [X->D/E Calculation] Skipping Other Receivables update (no change or duplicate)');
+      }
+    } else {
+      console.warn('⚠️ [X->D/E Calculation] Cannot calculate Other Receivables:', {
+        hasOtherReceivablesCode: !!otherReceivablesCode,
+        hasOtherReceivableXCode: !!otherReceivableXCode,
+        otherReceivablesCode,
+        otherReceivableXCode
       });
     }
   }, [formData, quarter, previousQuarterBalances, activitiesQuery.data]);

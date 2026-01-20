@@ -92,7 +92,7 @@ const hivActivities: ActivityData[] = [
     // B. Expenditures Total (both)
     { categoryCode: 'B', subCategoryCode: null, name: 'B. Expenditures', displayOrder: 99, isTotalRow: true, activityType: 'EXPENSE_TOTAL', applicableTo: 'both' },
 
-    // X. Miscellaneous Adjustments (NEW: for double-entry Other Receivables)
+    // X. Miscellaneous Adjustments (for double-entry Other Receivables and Other Payables)
     { categoryCode: 'X', subCategoryCode: null, name: 'Other Receivable', displayOrder: 1, isTotalRow: false, activityType: 'MISCELLANEOUS_ADJUSTMENT', applicableTo: 'both' },
     { categoryCode: 'X', subCategoryCode: null, name: 'Other Payables', displayOrder: 2, isTotalRow: false, activityType: 'MISCELLANEOUS_ADJUSTMENT', applicableTo: 'both' },
 
@@ -180,8 +180,9 @@ const malariaActivities: ActivityData[] = [
     // B. Expenditures Total (both)
     { categoryCode: 'B', subCategoryCode: null, name: 'B. Expenditures', displayOrder: 99, isTotalRow: true, activityType: 'EXPENSE_TOTAL', applicableTo: 'both' },
 
-    // X. Miscellaneous Adjustments (NEW: for double-entry Other Receivables)
+    // X. Miscellaneous Adjustments (for double-entry Other Receivables and Other Payables)
     { categoryCode: 'X', subCategoryCode: null, name: 'Other Receivable', displayOrder: 1, isTotalRow: false, activityType: 'MISCELLANEOUS_ADJUSTMENT', applicableTo: 'both' },
+    { categoryCode: 'X', subCategoryCode: null, name: 'Other Payables', displayOrder: 2, isTotalRow: false, activityType: 'MISCELLANEOUS_ADJUSTMENT', applicableTo: 'both' },
 
     // D. Financial Assets (facility-specific variations)
     { categoryCode: 'D', subCategoryCode: null, name: 'Cash at bank', displayOrder: 1, isTotalRow: false, activityType: 'ASSET', applicableTo: 'both' },
@@ -206,7 +207,8 @@ const malariaActivities: ActivityData[] = [
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 13: Maintenance', displayOrder: 13, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 14: Fuel', displayOrder: 14, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 15: Office supplies', displayOrder: 15, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'E. Financial Liabilities', displayOrder: 16, isTotalRow: true, activityType: 'LIABILITY_TOTAL', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 16: Other payables', displayOrder: 16, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'E. Financial Liabilities', displayOrder: 17, isTotalRow: true, activityType: 'LIABILITY_TOTAL', applicableTo: 'both' },
 
     // F. Net Financial Assets (computed for both)
     { categoryCode: 'F', subCategoryCode: null, name: 'F. Net Financial Assets', displayOrder: 1, isTotalRow: true, activityType: 'COMPUTED', computationRules: { formula: 'D - E', description: 'Financial Assets minus Financial Liabilities' }, applicableTo: 'both' },
@@ -256,8 +258,9 @@ const tbActivities: ActivityData[] = [
     // B. Expenditures Total (both)
     { categoryCode: 'B', subCategoryCode: null, name: 'B. Expenditures', displayOrder: 99, isTotalRow: true, activityType: 'EXPENSE_TOTAL', applicableTo: 'both' },
 
-    // X. Miscellaneous Adjustments (NEW: for double-entry Other Receivables)
+    // X. Miscellaneous Adjustments (for double-entry Other Receivables and Other Payables)
     { categoryCode: 'X', subCategoryCode: null, name: 'Other Receivable', displayOrder: 1, isTotalRow: false, activityType: 'MISCELLANEOUS_ADJUSTMENT', applicableTo: 'both' },
+    { categoryCode: 'X', subCategoryCode: null, name: 'Other Payables', displayOrder: 2, isTotalRow: false, activityType: 'MISCELLANEOUS_ADJUSTMENT', applicableTo: 'both' },
 
     // D. Financial Assets (facility-specific variations)
     { categoryCode: 'D', subCategoryCode: null, name: 'Cash at bank', displayOrder: 1, isTotalRow: false, activityType: 'ASSET', applicableTo: 'both' },
@@ -267,7 +270,7 @@ const tbActivities: ActivityData[] = [
     { categoryCode: 'D', subCategoryCode: 'D-01', name: 'VAT Receivable 2: Maintenance', displayOrder: 2, isTotalRow: false, activityType: 'VAT_RECEIVABLE', vatCategory: 'MAINTENANCE', applicableTo: 'both' },
     { categoryCode: 'D', subCategoryCode: 'D-01', name: 'VAT Receivable 3: Fuel', displayOrder: 3, isTotalRow: false, activityType: 'VAT_RECEIVABLE', vatCategory: 'FUEL', applicableTo: 'both' },
     { categoryCode: 'D', subCategoryCode: 'D-01', name: 'VAT Receivable 4: Office supplies', displayOrder: 4, isTotalRow: false, activityType: 'VAT_RECEIVABLE', vatCategory: 'SUPPLIES', applicableTo: 'both' },
-    { categoryCode: 'D', subCategoryCode: 'D-01', name: 'Other Receivables', displayOrder: 4, isTotalRow: false, activityType: 'COMPUTED_ASSET', computationRules: { formula: 'X_OTHER_RECEIVABLE', description: 'Automatically calculated from Miscellaneous Adjustments' }, applicableTo: 'both' },
+    { categoryCode: 'D', subCategoryCode: 'D-01', name: 'Other Receivables', displayOrder: 5, isTotalRow: false, activityType: 'COMPUTED_ASSET', computationRules: { formula: 'X_OTHER_RECEIVABLE', description: 'Automatically calculated from Miscellaneous Adjustments' }, applicableTo: 'both' },
 
     { categoryCode: 'D', subCategoryCode: null, name: 'D. Financial Assets', displayOrder: 9, isTotalRow: true, activityType: 'ASSET_TOTAL', applicableTo: 'both' },
 
@@ -280,7 +283,8 @@ const tbActivities: ActivityData[] = [
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 13: Maintenance', displayOrder: 13, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 14: Fuel', displayOrder: 14, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
     { categoryCode: 'E', subCategoryCode: null, name: 'Payable 15: Office supplies', displayOrder: 15, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
-    { categoryCode: 'E', subCategoryCode: null, name: 'E. Financial Liabilities', displayOrder: 16, isTotalRow: true, activityType: 'LIABILITY_TOTAL', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'Payable 16: Other payables', displayOrder: 16, isTotalRow: false, activityType: 'LIABILITY', applicableTo: 'both' },
+    { categoryCode: 'E', subCategoryCode: null, name: 'E. Financial Liabilities', displayOrder: 17, isTotalRow: true, activityType: 'LIABILITY_TOTAL', applicableTo: 'both' },
 
     // F. Net Financial Assets (computed for both)
     { categoryCode: 'F', subCategoryCode: null, name: 'F. Net Financial Assets', displayOrder: 1, isTotalRow: true, activityType: 'COMPUTED', computationRules: { formula: 'D - E', description: 'Financial Assets minus Financial Liabilities' }, applicableTo: 'both' },
