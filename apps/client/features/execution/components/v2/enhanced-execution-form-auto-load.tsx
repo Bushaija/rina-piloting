@@ -367,7 +367,39 @@ export function EnhancedExecutionFormAutoLoad({
 
       // Update the form with existing data
       if (Object.keys(transformedData).length > 0) {
-        form.setFormData(transformedData);
+        // Merge with existing formData to preserve computed fields
+        form.setFormData(prev => {
+          const merged = { ...prev };
+          
+          // For each activity in transformedData
+          Object.entries(transformedData).forEach(([code, data]: [string, any]) => {
+            // Check if this is a computed field (Other Receivables, Cash at Bank, etc.)
+            const isComputedField = code.includes('_D_D-01_5') || // Other Receivables
+                                   code.includes('_D_1') ||        // Cash at Bank
+                                   code.includes('_D_VAT_');       // VAT Receivables
+            
+            if (isComputedField && prev[code]) {
+              // For computed fields, merge carefully to preserve calculated values
+              // Only overwrite quarters that have actual saved data (non-zero)
+              merged[code] = {
+                ...prev[code],
+                q1: data.q1 || prev[code].q1 || 0,
+                q2: data.q2 || prev[code].q2 || 0,
+                q3: data.q3 || prev[code].q3 || 0,
+                q4: data.q4 || prev[code].q4 || 0,
+                comment: data.comment || prev[code].comment || '',
+                // Preserve computed-specific fields
+                vatCleared: data.vatCleared || prev[code].vatCleared || {},
+                otherReceivableCleared: data.otherReceivableCleared || prev[code].otherReceivableCleared || {},
+              };
+            } else {
+              // For non-computed fields, use the loaded data
+              merged[code] = data;
+            }
+          });
+          
+          return merged;
+        });
         autoLoadedRef.current = true;
 
         // Show which quarters have data

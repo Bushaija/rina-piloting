@@ -104,6 +104,7 @@ export function useExecutionForm({
   const [isBalanced, setIsBalanced] = useState<boolean>(true);
   const [difference, setDifference] = useState<number>(0);
   const [computedValues, setComputedValues] = useState<Record<string, any> | null>(null);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false); // Track if opening balances have been applied
 
   // Debounce API-triggering changes; keep UI responsive while reducing calls
   const [debounceMs, setDebounceMs] = useState<number>(200);
@@ -955,6 +956,46 @@ export function useExecutionForm({
   // Use refs to track last calculated values and prevent infinite loops
   const lastOtherReceivablesCalcRef = useRef<{ quarter: string; value: number } | null>(null);
   const lastOtherPayablesCalcRef = useRef<{ quarter: string; value: number } | null>(null);
+  
+  // Initialize opening balances for computed fields (runs once on mount)
+  useEffect(() => {
+    if (isInitialized || !activitiesQuery.data || !previousQuarterBalances?.exists) return;
+    
+    console.log('🔧 [Initialization] Applying opening balances for computed fields');
+    
+    const quarterKey = quarter.toLowerCase() as 'q1' | 'q2' | 'q3' | 'q4';
+    const updates: Record<string, any> = {};
+    
+    // Find Other Receivables code
+    const xCodes = Object.keys(formData).filter(k => k.includes('_X_'));
+    const otherReceivablesCode = Object.keys(formData).find(c => 
+      c.includes('_D_') && (c.includes('D-01_5') || c.includes('_D_D-01_5'))
+    );
+    
+    // Initialize Other Receivables with opening balance if it's 0
+    if (otherReceivablesCode && previousQuarterBalances.closingBalances?.D) {
+      const openingBalance = previousQuarterBalances.closingBalances.D[otherReceivablesCode] || 0;
+      const currentValue = Number(formData[otherReceivablesCode]?.[quarterKey]) || 0;
+      
+      if (openingBalance > 0 && currentValue === 0) {
+        console.log(`🔧 [Initialization] Setting Other Receivables opening balance: ${openingBalance}`);
+        updates[otherReceivablesCode] = {
+          ...(formData[otherReceivablesCode] || { q1: 0, q2: 0, q3: 0, q4: 0, comment: '' }),
+          [quarterKey]: openingBalance
+        };
+      }
+    }
+    
+    // Apply updates if any
+    if (Object.keys(updates).length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        ...updates
+      }));
+    }
+    
+    setIsInitialized(true);
+  }, [isInitialized, activitiesQuery.data, previousQuarterBalances, formData, quarter]);
   
   useEffect(() => {
     console.log('🔄 [X->D/E Calculation] useEffect triggered', {

@@ -58,7 +58,7 @@ const executionEventMappings: EventMappingData[] = [
   { projectType: 'TB', activityName: 'VAT Receivable 3: Fuel', eventCode: 'ADVANCE_PAYMENTS', mappingType: 'DIRECT' },
   { projectType: 'TB', activityName: 'VAT Receivable 4: Office supplies', eventCode: 'ADVANCE_PAYMENTS', mappingType: 'DIRECT' },
 
-  // HIV Payables - All 15 liability activities
+  // HIV Payables - All 16 liability activities
   { projectType: 'HIV', activityName: 'Payable 1: Salaries', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
   { projectType: 'HIV', activityName: 'Payable 2: Support group meetings', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
   { projectType: 'HIV', activityName: 'Payable 3: Conduct census training', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
@@ -74,6 +74,7 @@ const executionEventMappings: EventMappingData[] = [
   { projectType: 'HIV', activityName: 'Payable 13: Maintenance', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
   { projectType: 'HIV', activityName: 'Payable 14: Fuel', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
   { projectType: 'HIV', activityName: 'Payable 15: Office supplies', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
+  { projectType: 'HIV', activityName: 'Payable 16: Other payables', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
 
   // Malaria Payables - All liability activities
   { projectType: 'Malaria', activityName: 'Payable 1: Salaries', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
@@ -86,6 +87,7 @@ const executionEventMappings: EventMappingData[] = [
   { projectType: 'Malaria', activityName: 'Payable 13: Maintenance', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
   { projectType: 'Malaria', activityName: 'Payable 14: Fuel', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
   { projectType: 'Malaria', activityName: 'Payable 15: Office supplies', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
+  { projectType: 'Malaria', activityName: 'Payable 16: Other payables', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
 
   // TB Payables - All liability activities
   { projectType: 'TB', activityName: 'Payable 1: Salaries', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
@@ -96,6 +98,7 @@ const executionEventMappings: EventMappingData[] = [
   { projectType: 'TB', activityName: 'Payable 13: Maintenance', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
   { projectType: 'TB', activityName: 'Payable 14: Fuel', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
   { projectType: 'TB', activityName: 'Payable 15: Office supplies', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
+  { projectType: 'TB', activityName: 'Payable 16: Other payables', eventCode: 'PAYABLES', mappingType: 'DIRECT' },
 
   // Equity mappings
   { projectType: 'HIV', activityName: 'Accumulated Surplus/Deficit', eventCode: 'ACCUMULATED_SURPLUS_DEFICITS', mappingType: 'DIRECT' },

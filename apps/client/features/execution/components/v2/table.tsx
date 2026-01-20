@@ -619,8 +619,9 @@ function SectionDRenderer({ section, ctx, projectType, facilityType, quarter, ac
                   const isComputed = item.isCalculated === true || isAutoCalc || isOtherReceivables;
                   const locked = ctx.isRowLocked(item.id, q as any);
                   const key = q.toLowerCase() as "q1" | "q2" | "q3" | "q4";
+                  // For computed fields (including Other Receivables), prioritize formData over item
                   const value = (item.isCalculated === true || isAutoCalc || isOtherReceivables)
-                    ? ((item as any)[key] as number | undefined) ?? (ctx.formData[item.id]?.[key] as number | undefined)
+                    ? (ctx.formData[item.id]?.[key] as number | undefined) ?? ((item as any)[key] as number | undefined)
                     : ((ctx.formData[item.id]?.[key] ?? (item as any)[key]) as number | undefined);
 
                   // DEBUG: Log raw value from API/formData
@@ -2098,8 +2099,9 @@ export function ExecutionTable() {
                                 const isComputed = leaf.isCalculated === true || isAutoCalc || isOtherReceivables;
                                 const locked = ctx.isRowLocked(leaf.id, q as any);
                                 const key = q.toLowerCase() as "q1" | "q2" | "q3" | "q4";
+                                // For computed fields (including Other Receivables), prioritize formData over leaf
                                 const value = (leaf.isCalculated === true || isAutoCalc || isOtherReceivables)
-                                  ? ((leaf as any)[key] as number | undefined) ?? (ctx.formData[leaf.id]?.[key] as number | undefined)
+                                  ? (ctx.formData[leaf.id]?.[key] as number | undefined) ?? ((leaf as any)[key] as number | undefined)
                                   : ((ctx.formData[leaf.id]?.[key] ?? (leaf as any)[key]) as number | undefined);
 
                                 // Determine tooltip text for auto-calculated fields
@@ -2242,8 +2244,9 @@ export function ExecutionTable() {
                         const isComputed = item.isCalculated === true || isAutoCalc || isOtherReceivables;
                         const locked = ctx.isRowLocked(item.id, q as any);
                         const key = q.toLowerCase() as "q1" | "q2" | "q3" | "q4";
+                        // For computed fields (including Other Receivables), prioritize formData over item
                         const value = (item.isCalculated === true || isAutoCalc || isOtherReceivables)
-                          ? ((item as any)[key] as number | undefined) ?? (ctx.formData[item.id]?.[key] as number | undefined)
+                          ? (ctx.formData[item.id]?.[key] as number | undefined) ?? ((item as any)[key] as number | undefined)
                           : ((ctx.formData[item.id]?.[key] ?? (item as any)[key]) as number | undefined);
 
                         // Determine tooltip text for auto-calculated fields
