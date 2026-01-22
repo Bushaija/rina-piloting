@@ -405,17 +405,23 @@ export function useExecutionForm({
       if (activitiesQuery.data) {
         const hierarchicalData = activitiesQuery.data as any;
         const sectionD = hierarchicalData?.D;
-        if (sectionD?.children) {
-          // Search through all D section items (including subcategories)
-          for (const child of sectionD.children) {
-            if (child.isSubcategory && child.children) {
-              // Search in subcategory children
-              const found = child.children.find((item: any) => 
+        
+        // Check direct items first
+        if (sectionD?.items) {
+          const found = sectionD.items.find((item: any) => 
+            item.code === code && item.name?.toLowerCase().includes('other receivable')
+          );
+          if (found) return true;
+        }
+        
+        // Check subcategories (D-01 contains VAT receivables and Other Receivables)
+        if (sectionD?.subCategories) {
+          for (const subCat of Object.values(sectionD.subCategories) as any[]) {
+            if (subCat.items) {
+              const found = subCat.items.find((item: any) => 
                 item.code === code && item.name?.toLowerCase().includes('other receivable')
               );
               if (found) return true;
-            } else if (child.code === code && child.name?.toLowerCase().includes('other receivable')) {
-              return true;
             }
           }
         }
@@ -923,17 +929,23 @@ export function useExecutionForm({
       if (activitiesQuery.data) {
         const hierarchicalData = activitiesQuery.data as any;
         const sectionD = hierarchicalData?.D;
-        if (sectionD?.children) {
-          // Search through all D section items (including subcategories)
-          for (const child of sectionD.children) {
-            if (child.isSubcategory && child.children) {
-              // Search in subcategory children
-              const found = child.children.find((item: any) => 
+        
+        // Check direct items first
+        if (sectionD?.items) {
+          const found = sectionD.items.find((item: any) => 
+            item.code === c && item.name?.toLowerCase().includes('other receivable')
+          );
+          if (found) return true;
+        }
+        
+        // Check subcategories (D-01 contains VAT receivables and Other Receivables)
+        if (sectionD?.subCategories) {
+          for (const subCat of Object.values(sectionD.subCategories) as any[]) {
+            if (subCat.items) {
+              const found = subCat.items.find((item: any) => 
                 item.code === c && item.name?.toLowerCase().includes('other receivable')
               );
               if (found) return true;
-            } else if (child.code === c && child.name?.toLowerCase().includes('other receivable')) {
-              return true;
             }
           }
         }
@@ -1002,17 +1014,23 @@ export function useExecutionForm({
       if (activitiesQuery.data) {
         const hierarchicalData = activitiesQuery.data as any;
         const sectionD = hierarchicalData?.D;
-        if (sectionD?.children) {
-          // Search through all D section items (including subcategories)
-          for (const child of sectionD.children) {
-            if (child.isSubcategory && child.children) {
-              // Search in subcategory children
-              const found = child.children.find((item: any) => 
+        
+        // Check direct items first
+        if (sectionD?.items) {
+          const found = sectionD.items.find((item: any) => 
+            item.code === c && item.name?.toLowerCase().includes('other receivable')
+          );
+          if (found) return true;
+        }
+        
+        // Check subcategories (D-01 contains VAT receivables and Other Receivables)
+        if (sectionD?.subCategories) {
+          for (const subCat of Object.values(sectionD.subCategories) as any[]) {
+            if (subCat.items) {
+              const found = subCat.items.find((item: any) => 
                 item.code === c && item.name?.toLowerCase().includes('other receivable')
               );
               if (found) return true;
-            } else if (child.code === c && child.name?.toLowerCase().includes('other receivable')) {
-              return true;
             }
           }
         }
@@ -1025,10 +1043,36 @@ export function useExecutionForm({
     if (!otherReceivablesCode && activitiesQuery.data) {
       const hierarchicalData = activitiesQuery.data as any;
       const sectionD = hierarchicalData?.D;
-      if (sectionD?.children) {
-        for (const child of sectionD.children) {
-          if (child.isSubcategory && child.children) {
-            const found = child.children.find((item: any) => 
+      
+      // Check direct items first
+      if (sectionD?.items) {
+        const found = sectionD.items.find((item: any) => 
+          item.name?.toLowerCase().includes('other receivable')
+        );
+        if (found) {
+          otherReceivablesCode = found.code;
+          console.log('🔧 [X->D/E Calculation] Initializing Other Receivables in formData:', otherReceivablesCode);
+          setFormData(prev => ({
+            ...prev,
+            [otherReceivablesCode!]: {
+              q1: 0,
+              q2: 0,
+              q3: 0,
+              q4: 0,
+              comment: '',
+              otherReceivableCleared: {},
+            }
+          }));
+          // Return early to let the next render cycle handle the calculation
+          return;
+        }
+      }
+      
+      // Check subcategories (D-01 contains VAT receivables and Other Receivables)
+      if (sectionD?.subCategories) {
+        for (const subCat of Object.values(sectionD.subCategories) as any[]) {
+          if (subCat.items) {
+            const found = subCat.items.find((item: any) => 
               item.name?.toLowerCase().includes('other receivable')
             );
             if (found) {
@@ -1048,22 +1092,6 @@ export function useExecutionForm({
               // Return early to let the next render cycle handle the calculation
               return;
             }
-          } else if (child.name?.toLowerCase().includes('other receivable')) {
-            otherReceivablesCode = child.code;
-            console.log('🔧 [X->D/E Calculation] Initializing Other Receivables in formData:', otherReceivablesCode);
-            setFormData(prev => ({
-              ...prev,
-              [otherReceivablesCode!]: {
-                q1: 0,
-                q2: 0,
-                q3: 0,
-                q4: 0,
-                comment: '',
-                otherReceivableCleared: {},
-              }
-            }));
-            // Return early to let the next render cycle handle the calculation
-            return;
           }
         }
       }
